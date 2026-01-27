@@ -1,0 +1,109 @@
+package com.homegenie.gateway.filter;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.core.Ordered;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.stereotype.Component;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.UUID;
+
+
+@Slf4j
+@Component
+public class RequestLoggingFilter implements GlobalFilter, Ordered {
+    
+    private static final String REQUEST_ID_HEADER = "X-Request-Id";
+    private static final String REQUEST_START_TIME = "requestStartTime";
+    
+    @Override
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        ServerHttpRequest request = exchange.getRequest();
+        
+        // Generate or extract request ID
+        String requestIdHeader = request.getHeaders().getFirst(REQUEST_ID_HEADER);
+        final String requestId = (requestIdHeader == null || requestIdHeader.isBlank()) 
+            ? UUID.randomUUID().toString() 
+            : requestIdHeader;
+        
+        // Add request ID to response headers
+        exchange.getResponse().getHeaders().add(REQUEST_ID_HEADER, requestId);
+        
+        // Store start time
+        exchange.getAttributes().put(REQUEST_START_TIME, Instant.now());
+        
+        // Extract client IP (X-Forwarded-For aware)
+        String clientIp = getClientIp(request);
+        
+        // Log request
+        log.info("→ Request [{}] {} {} from {} - User-Agent: {}", 
+            requestId,
+            request.getMethod(),
+            request.getURI().getPath(),
+            clientIp,
+            request.getHeaders().getFirst("User-Agent"));
+        
+        // Continue filter chain and log response
+        return chain.filter(exchange)
+            .doFinally(signalType -> {
+                ServerHttpResponse response = exchange.getResponse();
+                Instant startTime = exchange.getAttribute(REQUEST_START_TIME);
+                
+                long duration = startTime != null 
+                    ? Duration.between(startTime, Instant.now()).toMillis()
+                    : 0;
+                
+                log.info("← Response [{}] {} {} - Status: {} - Duration: {}ms",
+                    requestId,
+                    request.getMethod(),
+                    request.getURI().getPath(),
+                    response.getStatusCode(),
+                    duration);
+                
+                // Warn on slow requests (> 1000ms)
+                if (duration > 1000) {
+                    log.warn("⚠ Slow request detected [{}] - {}ms", requestId, duration);
+                }
+            })
+            .doOnError(error -> {
+                log.error("✗ Request failed [{}] {} {} - Error: {}",
+                    requestId,
+                    request.getMethod(),
+                    request.getURI().getPath(),
+                    error.getMessage());
+            });
+    }
+    
+    *
+     * Extract real client IP from X-Forwarded-For header
+     * Falls back to remote address if header not present
+     */
+    private String getClientIp(ServerHttpRequest request) {
+        String xff = request.getHeaders().getFirst("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            // X-Forwarded-For: client, proxy1, proxy2
+            // Take first IP (original client)
+            return xff.split(",")[0].trim();
+        }
+        
+        if (request.getRemoteAddress() != null) {
+            return request.getRemoteAddress().getAddress().getHostAddress();
+        }
+        
+        return "unknown";
+    }
+    
+    *
+     * Run this filter first (before routing)
+     */
+    @Override
+    public int getOrder() {
+        return Ordered.HIGHEST_PRECEDENCE;
+    }
+}

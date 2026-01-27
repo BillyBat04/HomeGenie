@@ -1,0 +1,535 @@
+{
+    "uid": "homegenie-system-overview",
+    "title": "HomeGenie - System Overview",
+    "id": null,
+    "dashboard": {
+        "uid": "homegenie-system-overview",
+        "title": "HomeGenie - System Overview",
+        "tags": [
+            "homegenie",
+            "overview",
+            "sla"
+        ],
+        "timezone": "browser",
+        "schemaVersion": 27,
+        "version": 1,
+        "refresh": "30s",
+        "time": {
+            "from": "now-1h",
+            "to": "now"
+        },
+        "panels": [
+            {
+                "id": 1,
+                "type": "stat",
+                "title": "Gateway - Requests/s",
+                "gridPos": {
+                    "x": 0,
+                    "y": 0,
+                    "w": 4,
+                    "h": 4
+                },
+                "targets": [
+                    {
+                        "expr": "rate(http_server_requests_seconds_count{application=\"gateway-service\"}[1m])",
+                        "legendFormat": "Req/s",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "reqps",
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "value": null,
+                                    "color": "green"
+                                },
+                                {
+                                    "value": 100,
+                                    "color": "yellow"
+                                },
+                                {
+                                    "value": 500,
+                                    "color": "red"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "id": 2,
+                "type": "stat",
+                "title": "Gateway - P99 Latency",
+                "gridPos": {
+                    "x": 4,
+                    "y": 0,
+                    "w": 4,
+                    "h": 4
+                },
+                "targets": [
+                    {
+                        "expr": "histogram_quantile(0.99, rate(http_server_requests_seconds_bucket{application=\"gateway-service\"}[5m]))",
+                        "legendFormat": "P99",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "s",
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "value": null,
+                                    "color": "green"
+                                },
+                                {
+                                    "value": 0.5,
+                                    "color": "yellow"
+                                },
+                                {
+                                    "value": 1,
+                                    "color": "red"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "id": 3,
+                "type": "stat",
+                "title": "Error Rate (%)",
+                "gridPos": {
+                    "x": 8,
+                    "y": 0,
+                    "w": 4,
+                    "h": 4
+                },
+                "targets": [
+                    {
+                        "expr": "100 * (sum(rate(http_server_requests_seconds_count{status=~\"5..\"}[5m])) / sum(rate(http_server_requests_seconds_count[5m])))",
+                        "legendFormat": "Error %",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "percent",
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "value": null,
+                                    "color": "green"
+                                },
+                                {
+                                    "value": 1,
+                                    "color": "yellow"
+                                },
+                                {
+                                    "value": 5,
+                                    "color": "red"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "id": 4,
+                "type": "stat",
+                "title": "Active Pods",
+                "gridPos": {
+                    "x": 12,
+                    "y": 0,
+                    "w": 4,
+                    "h": 4
+                },
+                "targets": [
+                    {
+                        "expr": "count(up{job=~\".*-service\"} == 1)",
+                        "legendFormat": "Active",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "value": null,
+                                    "color": "red"
+                                },
+                                {
+                                    "value": 3,
+                                    "color": "yellow"
+                                },
+                                {
+                                    "value": 5,
+                                    "color": "green"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "id": 5,
+                "type": "stat",
+                "title": "System Uptime",
+                "gridPos": {
+                    "x": 16,
+                    "y": 0,
+                    "w": 4,
+                    "h": 4
+                },
+                "targets": [
+                    {
+                        "expr": "100 * (1 - (sum(rate(http_server_requests_seconds_count{status=~\"5..\"}[24h])) / sum(rate(http_server_requests_seconds_count[24h]))))",
+                        "legendFormat": "Uptime %",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "percent",
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "value": null,
+                                    "color": "red"
+                                },
+                                {
+                                    "value": 99,
+                                    "color": "yellow"
+                                },
+                                {
+                                    "value": 99.9,
+                                    "color": "green"
+                                }
+                            ]
+                        },
+                        "decimals": 3
+                    }
+                }
+            },
+            {
+                "id": 6,
+                "type": "stat",
+                "title": "Kafka Lag",
+                "gridPos": {
+                    "x": 20,
+                    "y": 0,
+                    "w": 4,
+                    "h": 4
+                },
+                "targets": [
+                    {
+                        "expr": "sum(kafka_consumergroup_lag{consumergroup=\"notification-service-group\"})",
+                        "legendFormat": "Messages",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "value": null,
+                                    "color": "green"
+                                },
+                                {
+                                    "value": 100,
+                                    "color": "yellow"
+                                },
+                                {
+                                    "value": 500,
+                                    "color": "red"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "id": 7,
+                "type": "timeseries",
+                "title": "Request Rate by Service (RED Metrics)",
+                "gridPos": {
+                    "x": 0,
+                    "y": 4,
+                    "w": 12,
+                    "h": 8
+                },
+                "targets": [
+                    {
+                        "expr": "rate(http_server_requests_seconds_count{application=\"gateway-service\"}[1m])",
+                        "legendFormat": "Gateway",
+                        "refId": "A"
+                    },
+                    {
+                        "expr": "rate(http_server_requests_seconds_count{application=\"user-service\"}[1m])",
+                        "legendFormat": "User Service",
+                        "refId": "B"
+                    },
+                    {
+                        "expr": "rate(http_server_requests_seconds_count{application=\"maintenance-service\"}[1m])",
+                        "legendFormat": "Maintenance Service",
+                        "refId": "C"
+                    },
+                    {
+                        "expr": "rate(http_server_requests_seconds_count{application=\"payment-service\"}[1m])",
+                        "legendFormat": "Payment Service",
+                        "refId": "D"
+                    },
+                    {
+                        "expr": "rate(http_server_requests_seconds_count{application=\"notification-service\"}[1m])",
+                        "legendFormat": "Notification Service",
+                        "refId": "E"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "reqps",
+                        "custom": {
+                            "drawStyle": "line",
+                            "lineInterpolation": "smooth"
+                        }
+                    }
+                }
+            },
+            {
+                "id": 8,
+                "type": "timeseries",
+                "title": "Response Time P95/P99 (Latency)",
+                "gridPos": {
+                    "x": 12,
+                    "y": 4,
+                    "w": 12,
+                    "h": 8
+                },
+                "targets": [
+                    {
+                        "expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{application=\"gateway-service\"}[5m]))",
+                        "legendFormat": "Gateway P95",
+                        "refId": "A"
+                    },
+                    {
+                        "expr": "histogram_quantile(0.99, rate(http_server_requests_seconds_bucket{application=\"gateway-service\"}[5m]))",
+                        "legendFormat": "Gateway P99",
+                        "refId": "B"
+                    },
+                    {
+                        "expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{application=~\".*-service\",application!=\"gateway-service\"}[5m]))",
+                        "legendFormat": "{{application}} P95",
+                        "refId": "C"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "s",
+                        "custom": {
+                            "drawStyle": "line",
+                            "lineInterpolation": "smooth"
+                        }
+                    }
+                }
+            },
+            {
+                "id": 9,
+                "type": "timeseries",
+                "title": "Error Rate by Service (5xx Errors)",
+                "gridPos": {
+                    "x": 0,
+                    "y": 12,
+                    "w": 12,
+                    "h": 8
+                },
+                "targets": [
+                    {
+                        "expr": "rate(http_server_requests_seconds_count{status=~\"5..\",application=\"gateway-service\"}[5m])",
+                        "legendFormat": "Gateway 5xx",
+                        "refId": "A"
+                    },
+                    {
+                        "expr": "rate(http_server_requests_seconds_count{status=~\"5..\",application=\"user-service\"}[5m])",
+                        "legendFormat": "User Service 5xx",
+                        "refId": "B"
+                    },
+                    {
+                        "expr": "rate(http_server_requests_seconds_count{status=~\"5..\",application=\"maintenance-service\"}[5m])",
+                        "legendFormat": "Maintenance Service 5xx",
+                        "refId": "C"
+                    },
+                    {
+                        "expr": "rate(http_server_requests_seconds_count{status=~\"5..\",application=\"payment-service\"}[5m])",
+                        "legendFormat": "Payment Service 5xx",
+                        "refId": "D"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "reqps",
+                        "custom": {
+                            "drawStyle": "line",
+                            "lineInterpolation": "smooth"
+                        }
+                    }
+                }
+            },
+            {
+                "id": 10,
+                "type": "timeseries",
+                "title": "JVM Memory Usage",
+                "gridPos": {
+                    "x": 12,
+                    "y": 12,
+                    "w": 12,
+                    "h": 8
+                },
+                "targets": [
+                    {
+                        "expr": "jvm_memory_used_bytes{application=\"gateway-service\",area=\"heap\"} / 1024 / 1024",
+                        "legendFormat": "Gateway Heap",
+                        "refId": "A"
+                    },
+                    {
+                        "expr": "jvm_memory_used_bytes{application=\"user-service\",area=\"heap\"} / 1024 / 1024",
+                        "legendFormat": "User Service Heap",
+                        "refId": "B"
+                    },
+                    {
+                        "expr": "jvm_memory_used_bytes{application=\"maintenance-service\",area=\"heap\"} / 1024 / 1024",
+                        "legendFormat": "Maintenance Service Heap",
+                        "refId": "C"
+                    },
+                    {
+                        "expr": "jvm_memory_used_bytes{application=\"payment-service\",area=\"heap\"} / 1024 / 1024",
+                        "legendFormat": "Payment Service Heap",
+                        "refId": "D"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "mbytes",
+                        "custom": {
+                            "drawStyle": "line",
+                            "lineInterpolation": "smooth"
+                        }
+                    }
+                }
+            },
+            {
+                "id": 11,
+                "type": "timeseries",
+                "title": "Database Connection Pool Usage",
+                "gridPos": {
+                    "x": 0,
+                    "y": 20,
+                    "w": 12,
+                    "h": 8
+                },
+                "targets": [
+                    {
+                        "expr": "hikaricp_connections_active{application=\"user-service\"}",
+                        "legendFormat": "User Service Active",
+                        "refId": "A"
+                    },
+                    {
+                        "expr": "hikaricp_connections_active{application=\"maintenance-service\"}",
+                        "legendFormat": "Maintenance Service Active",
+                        "refId": "B"
+                    },
+                    {
+                        "expr": "hikaricp_connections_active{application=\"payment-service\"}",
+                        "legendFormat": "Payment Service Active",
+                        "refId": "C"
+                    },
+                    {
+                        "expr": "hikaricp_connections{application=\"user-service\"}",
+                        "legendFormat": "User Service Total",
+                        "refId": "D"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "short",
+                        "custom": {
+                            "drawStyle": "line",
+                            "lineInterpolation": "smooth"
+                        }
+                    }
+                }
+            },
+            {
+                "id": 12,
+                "type": "timeseries",
+                "title": "CPU Usage (%)",
+                "gridPos": {
+                    "x": 12,
+                    "y": 20,
+                    "w": 12,
+                    "h": 8
+                },
+                "targets": [
+                    {
+                        "expr": "100 * process_cpu_usage{application=\"gateway-service\"}",
+                        "legendFormat": "Gateway",
+                        "refId": "A"
+                    },
+                    {
+                        "expr": "100 * process_cpu_usage{application=\"user-service\"}",
+                        "legendFormat": "User Service",
+                        "refId": "B"
+                    },
+                    {
+                        "expr": "100 * process_cpu_usage{application=\"maintenance-service\"}",
+                        "legendFormat": "Maintenance Service",
+                        "refId": "C"
+                    },
+                    {
+                        "expr": "100 * process_cpu_usage{application=\"payment-service\"}",
+                        "legendFormat": "Payment Service",
+                        "refId": "D"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "percent",
+                        "min": 0,
+                        "max": 100,
+                        "custom": {
+                            "drawStyle": "line",
+                            "lineInterpolation": "smooth"
+                        }
+                    }
+                }
+            }
+        ]
+    }
+}

@@ -1,0 +1,152 @@
+# =====================================================
+# Prometheus Configuration for HomeGenie
+# Scrapes metrics from Spring Boot Actuator endpoints
+# =====================================================
+
+global:
+  scrape_interval: 15s # Scrape metrics every 15 seconds
+  evaluation_interval: 15s # Evaluate rules every 15 seconds
+  external_labels:
+    monitor: "homegenie-monitor"
+    environment: "development"
+
+# Alertmanager configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load rules once and periodically evaluate them
+rule_files: []
+
+# Scrape configurations
+scrape_configs:
+  # =====================================================
+  # User Service Metrics
+  # =====================================================
+  - job_name: "user-service"
+    metrics_path: "/actuator/prometheus"
+    static_configs:
+      - targets: ["host.docker.internal:8081"]
+        labels:
+          application: "user-service"
+          service: "backend"
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # =====================================================
+  # Maintenance Service Metrics
+  # =====================================================
+  - job_name: "maintenance-service"
+    metrics_path: "/actuator/prometheus"
+    static_configs:
+      - targets: ["host.docker.internal:8082"]
+        labels:
+          application: "maintenance-service"
+          service: "backend"
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # =====================================================
+  # Notification Service Metrics
+  # =====================================================
+  - job_name: "notification-service"
+    metrics_path: "/actuator/prometheus"
+    static_configs:
+      - targets: ["host.docker.internal:8084"]
+        labels:
+          application: "notification-service"
+          service: "backend"
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # =====================================================
+  # Payment Service Metrics
+  # =====================================================
+  - job_name: "payment-service"
+    metrics_path: "/actuator/prometheus"
+    static_configs:
+      - targets: ["host.docker.internal:8083"]
+        labels:
+          application: "payment-service"
+          service: "backend"
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # =====================================================
+  # API Gateway Metrics
+  # =====================================================
+  - job_name: "gateway-service"
+    metrics_path: "/actuator/prometheus"
+    static_configs:
+      - targets: ["host.docker.internal:8080"]
+        labels:
+          application: "gateway-service"
+          service: "gateway"
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # =====================================================
+  # Prometheus Self-Monitoring
+  # =====================================================
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          application: "prometheus"
+
+  # =====================================================
+  # Kafka Lag Exporter (Consumer Lag Monitoring)
+  # =====================================================
+  - job_name: "kafka-lag-exporter"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["kafka-lag-exporter:9999"]
+        labels:
+          application: "kafka-lag-exporter"
+          service: "monitoring"
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # =====================================================
+  # PostgreSQL Exporter (Optional - add if needed)
+  # =====================================================
+  # - job_name: 'postgresql'
+  #   static_configs:
+  #     - targets: ['postgres-exporter:9187']
+
+  # =====================================================
+  # Redis Exporter (Optional - add if needed)
+  # =====================================================
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
+
+  # =====================================================
+  # Kafka Exporter (Optional - add if needed)
+  # =====================================================
+  # - job_name: 'kafka'
+  #   static_configs:
+  #     - targets: ['kafka-exporter:9308']
+# =====================================================
+# Useful Prometheus Queries for HomeGenie:
+# =====================================================
+#
+# JVM Memory Usage:
+#   jvm_memory_used_bytes{application="user-service"}
+#
+# HTTP Request Rate:
+#   rate(http_server_requests_seconds_count[1m])
+#
+# HTTP Request Duration (p99):
+#   histogram_quantile(0.99, rate(http_server_requests_seconds_bucket[5m]))
+#
+# Virtual Threads Active:
+#   jvm_threads_live_threads{application="user-service"}
+#
+# Database Connection Pool:
+#   hikaricp_connections_active{application="maintenance-service"}
+#
+# API Error Rate:
+#   rate(http_server_requests_seconds_count{status="500"}[5m])
+# =====================================================

@@ -1,0 +1,286 @@
+openapi: 3.0.1
+info:
+  title: Notification Service API
+  description: |
+    Email and SMS notification management via AWS SES/SNS.
+    Kafka-based event consumption with notification history tracking.
+  version: 1.0.0
+  contact:
+    name: HomeGenie Team
+servers:
+  - url: http://localhost:8084
+    description: Local development
+  - url: http://production-url:8084
+    description: Production
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Notifications
+    description: Notification retrieval and management
+  - name: Health Check
+    description: Service health monitoring
+
+paths:
+  /api/notifications/user/{userId}:
+    get:
+      tags:
+        - Notifications
+      summary: Get user notifications
+      description: Retrieve all notifications for a user
+      operationId: getUserNotifications
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: User ID
+          example: 1
+      responses:
+        "200":
+          description: Notifications found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+              example:
+                - id: 1
+                  userId: 1
+                  type: "PAYMENT_CONFIRMATION"
+                  channel: "EMAIL"
+                  status: "DELIVERED"
+                  recipient: "nguyenvana@example.com"
+                  subject: "Payment Confirmation"
+                  content: "Your payment of 500,000 VND has been processed"
+                  createdAt: "2024-01-15T10:30:00"
+                  sentAt: "2024-01-15T10:30:05"
+                  deliveredAt: "2024-01-15T10:30:10"
+        "404":
+          description: No notifications found
+
+  /api/notifications/user/{userId}/unread:
+    get:
+      tags:
+        - Notifications
+      summary: Get unread notifications
+      description: Retrieve unread notifications for a user
+      operationId: getUnreadNotifications
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: User ID
+          example: 1
+      responses:
+        "200":
+          description: Unread notifications found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+
+  /api/notifications/{notificationId}/read:
+    put:
+      tags:
+        - Notifications
+      summary: Mark as read
+      description: Mark notification as read
+      operationId: markAsRead
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Notification ID
+          example: 1
+      responses:
+        "200":
+          description: Notification marked as read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+        "404":
+          description: Notification not found
+
+  /api/notifications/health:
+    get:
+      tags:
+        - Health Check
+      summary: Health check
+      description: Check service health
+      operationId: healthCheck
+      security: []
+      responses:
+        "200":
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: string
+              example: "Notification Service is running"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from User Service
+
+  schemas:
+    Notification:
+      type: object
+      description: Notification entity
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Notification ID
+          example: 1
+        type:
+          type: string
+          description: Notification type
+          enum:
+            - PAYMENT_CONFIRMATION
+            - PAYMENT_FAILED
+            - INVOICE_SENT
+            - MAINTENANCE_REQUEST_CREATED
+            - MAINTENANCE_REQUEST_ASSIGNED
+            - MAINTENANCE_REQUEST_COMPLETED
+            - MAINTENANCE_REQUEST_CANCELLED
+            - USER_REGISTERED
+            - USER_PROFILE_UPDATED
+            - WALLET_TOPUP
+            - WALLET_DEBIT
+            - SYSTEM_ALERT
+            - REMINDER
+          example: "PAYMENT_CONFIRMATION"
+        channel:
+          type: string
+          description: Notification channel
+          enum: [EMAIL, SMS, PUSH_NOTIFICATION, IN_APP]
+          example: "EMAIL"
+        status:
+          type: string
+          description: Notification status
+          enum:
+            [
+              PENDING,
+              SENDING,
+              SENT,
+              DELIVERED,
+              READ,
+              FAILED,
+              RETRYING,
+              CANCELLED,
+            ]
+          example: "DELIVERED"
+        recipient:
+          type: string
+          description: Recipient email/phone
+          example: "nguyenvana@example.com"
+        recipientName:
+          type: string
+          description: Recipient name
+          example: "Nguyễn Văn An"
+        subject:
+          type: string
+          description: Notification subject
+          example: "Payment Confirmation"
+        content:
+          type: string
+          description: Notification text content
+          example: "Your payment of 500,000 VND has been processed successfully"
+        htmlContent:
+          type: string
+          description: HTML content for email
+          nullable: true
+          example: "<html><body><h1>Payment Confirmation</h1>...</body></html>"
+        userId:
+          type: integer
+          format: int64
+          description: User ID
+          example: 1
+        requestId:
+          type: integer
+          format: int64
+          description: Maintenance request ID
+          nullable: true
+          example: 1
+        paymentId:
+          type: integer
+          format: int64
+          description: Payment ID
+          nullable: true
+          example: 1
+        invoiceId:
+          type: integer
+          format: int64
+          description: Invoice ID
+          nullable: true
+          example: 1
+        templateId:
+          type: string
+          description: Email template ID
+          nullable: true
+          example: "payment-confirmation-template"
+        metadata:
+          type: string
+          description: Additional metadata (JSON string)
+          nullable: true
+          example: '{"amount":"500000","currency":"VND"}'
+        retryCount:
+          type: integer
+          description: Number of retry attempts
+          example: 0
+        maxRetries:
+          type: integer
+          description: Maximum retry attempts
+          example: 3
+        errorMessage:
+          type: string
+          description: Error message if failed
+          nullable: true
+          example: null
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          example: "2024-01-15T10:30:00"
+        sentAt:
+          type: string
+          format: date-time
+          description: Sent timestamp
+          nullable: true
+          example: "2024-01-15T10:30:05"
+        deliveredAt:
+          type: string
+          format: date-time
+          description: Delivered timestamp
+          nullable: true
+          example: "2024-01-15T10:30:10"
+        failedAt:
+          type: string
+          format: date-time
+          description: Failed timestamp
+          nullable: true
+          example: null
+        readAt:
+          type: string
+          format: date-time
+          description: Read timestamp
+          nullable: true
+          example: "2024-01-15T11:00:00"

@@ -1,0 +1,410 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-alerts
+  namespace: monitoring
+data:
+  alerts.yml: |
+    groups:
+      - name: homegenie_service_health
+        interval: 30s
+        rules:
+          # Service Down Alert
+          - alert: ServiceDown
+            expr: up{job=~"user-service|maintenance-service|payment-service|notification-service|gateway-service"} == 0
+            for: 2m
+            labels:
+              severity: critical
+              team: platform
+            annotations:
+              summary: "Service {{ $labels.job }} is down"
+              description: "Service {{ $labels.job }} on {{ $labels.instance }} has been down for more than 2 minutes."
+              runbook_url: "https://wiki.homegenie.com/runbooks/service-down"
+
+          # High Error Rate Alert
+          - alert: HighErrorRate
+            expr: |
+              (
+                sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m])) by (job)
+                /
+                sum(rate(http_server_requests_seconds_count[5m])) by (job)
+              ) * 100 > 5
+            for: 5m
+            labels:
+              severity: critical
+              team: platform
+            annotations:
+              summary: "High error rate on {{ $labels.job }}"
+              description: "Service {{ $labels.job }} has {{ $value | humanize }}% error rate (threshold: 5%)."
+              runbook_url: "https://wiki.homegenie.com/runbooks/high-error-rate"
+
+          # High Latency P99 Alert
+          - alert: HighLatencyP99
+            expr: |
+              histogram_quantile(0.99, 
+                sum(rate(http_server_requests_seconds_bucket[5m])) by (le, job)
+              ) > 1
+            for: 5m
+            labels:
+              severity: warning
+              team: platform
+            annotations:
+              summary: "High P99 latency on {{ $labels.job }}"
+              description: "Service {{ $labels.job }} P99 latency is {{ $value | humanize }}s (threshold: 1s)."
+              runbook_url: "https://wiki.homegenie.com/runbooks/high-latency"
+
+          # High Latency P95 Alert
+          - alert: HighLatencyP95
+            expr: |
+              histogram_quantile(0.95, 
+                sum(rate(http_server_requests_seconds_bucket[5m])) by (le, job)
+              ) > 0.5
+            for: 10m
+            labels:
+              severity: warning
+              team: platform
+            annotations:
+              summary: "Elevated P95 latency on {{ $labels.job }}"
+              description: "Service {{ $labels.job }} P95 latency is {{ $value | humanize }}s (threshold: 500ms)."
+
+      - name: homegenie_kafka_health
+        interval: 30s
+        rules:
+          # Kafka Consumer Lag Critical
+          - alert: KafkaConsumerLagCritical
+            expr: sum(kafka_consumergroup_lag{topic!=""}) by (consumergroup, topic) > 500
+            for: 10m
+            labels:
+              severity: critical
+              team: platform
+            annotations:
+              summary: "Critical Kafka lag on {{ $labels.consumergroup }}"
+              description: "Consumer group {{ $labels.consumergroup }} on topic {{ $labels.topic }} has {{ $value }} messages lag (threshold: 500)."
+              runbook_url: "https://wiki.homegenie.com/runbooks/kafka-lag"
+
+          # Kafka Consumer Lag Warning
+          - alert: KafkaConsumerLagWarning
+            expr: sum(kafka_consumergroup_lag{topic!=""}) by (consumergroup, topic) > 100
+            for: 15m
+            labels:
+              severity: warning
+              team: platform
+            annotations:
+              summary: "Kafka lag warning on {{ $labels.consumergroup }}"
+              description: "Consumer group {{ $labels.consumergroup }} on topic {{ $labels.topic }} has {{ $value }} messages lag (threshold: 100)."
+
+          # Kafka Consumer Not Consuming
+          - alert: KafkaConsumerNotConsuming
+            expr: rate(kafka_consumer_records_consumed_total[5m]) == 0
+            for: 5m
+            labels:
+              severity: warning
+              team: platform
+            annotations:
+              summary: "Kafka consumer {{ $labels.consumergroup }} stopped consuming"
+              description: "Consumer {{ $labels.consumergroup }} has not consumed messages for 5 minutes."
+
+          # High Kafka Message Processing Failures
+          - alert: HighKafkaProcessingFailures
+            expr: |
+              (
+                sum(rate(kafka_consumer_records_failed_total[5m])) by (topic)
+                /
+                sum(rate(kafka_consumer_records_consumed_total[5m])) by (topic)
+              ) * 100 > 5
+            for: 5m
+            labels:
+              severity: critical
+              team: platform
+            annotations:
+              summary: "High Kafka processing failure rate on {{ $labels.topic }}"
+              description: "Topic {{ $labels.topic }} has {{ $value | humanize }}% processing failure rate."
+
+      - name: homegenie_resource_utilization
+        interval: 30s
+        rules:
+          # High CPU Usage
+          - alert: HighCPUUsage
+            expr: |
+              (
+                sum(rate(process_cpu_seconds_total[5m])) by (job)
+                /
+                sum(system_cpu_count) by (job)
+              ) * 100 > 80
+            for: 10m
+            labels:
+              severity: warning
+              team: platform
+            annotations:
+              summary: "High CPU usage on {{ $labels.job }}"
+              description: "Service {{ $labels.job }} CPU usage is {{ $value | humanize }}% (threshold: 80%)."
+              runbook_url: "https://wiki.homegenie.com/runbooks/high-cpu"
+
+          # High Memory Usage
+          - alert: HighMemoryUsage
+            expr: |
+              (
+                sum(jvm_memory_used_bytes{area="heap"}) by (job)
+                /
+                sum(jvm_memory_max_bytes{area="heap"}) by (job)
+              ) * 100 > 90
+            for: 5m
+            labels:
+              severity: critical
+              team: platform
+            annotations:
+              summary: "High memory usage on {{ $labels.job }}"
+              description: "Service {{ $labels.job }} heap memory usage is {{ $value | humanize }}% (threshold: 90%)."
+              runbook_url: "https://wiki.homegenie.com/runbooks/high-memory"
+
+          # Low Disk Space
+          - alert: LowDiskSpace
+            expr: |
+              (
+                node_filesystem_avail_bytes{mountpoint="/"}
+                /
+                node_filesystem_size_bytes{mountpoint="/"}
+              ) * 100 < 10
+            for: 5m
+            labels:
+              severity: critical
+              team: infrastructure
+            annotations:
+              summary: "Low disk space on {{ $labels.instance }}"
+              description: "Disk space on {{ $labels.instance }} is {{ $value | humanize }}% available (threshold: 10%)."
+
+          # Database Connection Pool Exhaustion Warning
+          - alert: DatabaseConnectionPoolWarning
+            expr: |
+              (
+                hikaricp_connections_active
+                /
+                hikaricp_connections_max
+              ) * 100 > 80
+            for: 5m
+            labels:
+              severity: warning
+              team: platform
+            annotations:
+              summary: "Database connection pool near exhaustion on {{ $labels.job }}"
+              description: "Service {{ $labels.job }} using {{ $value | humanize }}% of connection pool (threshold: 80%)."
+
+          # Database Connection Pool Exhaustion Critical
+          - alert: DatabaseConnectionPoolCritical
+            expr: |
+              (
+                hikaricp_connections_active
+                /
+                hikaricp_connections_max
+              ) * 100 > 95
+            for: 2m
+            labels:
+              severity: critical
+              team: platform
+            annotations:
+              summary: "Database connection pool exhausted on {{ $labels.job }}"
+              description: "Service {{ $labels.job }} using {{ $value | humanize }}% of connection pool (threshold: 95%)."
+              runbook_url: "https://wiki.homegenie.com/runbooks/db-pool-exhaustion"
+
+      - name: homegenie_sla_compliance
+        interval: 30s
+        rules:
+          # SLA Violation - Uptime < 99.9%
+          - alert: SLAUptimeViolation
+            expr: |
+              (
+                avg_over_time(up{job=~"user-service|maintenance-service|payment-service|notification-service|gateway-service"}[1h])
+              ) * 100 < 99.9
+            for: 5m
+            labels:
+              severity: critical
+              team: platform
+            annotations:
+              summary: "SLA uptime violation on {{ $labels.job }}"
+              description: "Service {{ $labels.job }} uptime is {{ $value | humanize }}% (SLA: 99.9%)."
+              runbook_url: "https://wiki.homegenie.com/runbooks/sla-violation"
+
+          # Error Budget Exhaustion (>0.1% error rate)
+          - alert: ErrorBudgetExhaustion
+            expr: |
+              (
+                sum(rate(http_server_requests_seconds_count{status=~"5.."}[1h])) by (job)
+                /
+                sum(rate(http_server_requests_seconds_count[1h])) by (job)
+              ) * 100 > 0.1
+            for: 30m
+            labels:
+              severity: warning
+              team: platform
+            annotations:
+              summary: "Error budget exhaustion on {{ $labels.job }}"
+              description: "Service {{ $labels.job }} error rate {{ $value | humanize }}% exceeds error budget (0.1%)."
+
+          # Payment Success Rate SLA
+          - alert: PaymentSuccessRateSLA
+            expr: |
+              (
+                sum(increase(payment_completed_total[1h]))
+                /
+                (sum(increase(payment_completed_total[1h])) + sum(increase(payment_failed_total[1h])))
+              ) * 100 < 99
+            for: 15m
+            labels:
+              severity: critical
+              team: business
+            annotations:
+              summary: "Payment success rate below SLA"
+              description: "Payment success rate is {{ $value | humanize }}% (SLA: 99%)."
+              runbook_url: "https://wiki.homegenie.com/runbooks/payment-sla"
+
+          # Email Delivery Success Rate SLA
+          - alert: EmailDeliverySuccessRateSLA
+            expr: |
+              (
+                sum(increase(email_sent_success_total[1h]))
+                /
+                sum(increase(email_sent_total[1h]))
+              ) * 100 < 95
+            for: 15m
+            labels:
+              severity: warning
+              team: platform
+            annotations:
+              summary: "Email delivery success rate below SLA"
+              description: "Email delivery success rate is {{ $value | humanize }}% (SLA: 95%)."
+
+      - name: homegenie_business_metrics
+        interval: 1m
+        rules:
+          # Low User Registration Rate
+          - alert: LowUserRegistrationRate
+            expr: rate(user_registered_total[1h]) * 3600 < 10
+            for: 30m
+            labels:
+              severity: info
+              team: business
+            annotations:
+              summary: "Low user registration rate"
+              description: "User registration rate is {{ $value | humanize }} per hour (expected: >10)."
+
+          # High Payment Failure Rate
+          - alert: HighPaymentFailureRate
+            expr: |
+              (
+                sum(rate(payment_failed_total[15m]))
+                /
+                (sum(rate(payment_completed_total[15m])) + sum(rate(payment_failed_total[15m])))
+              ) * 100 > 5
+            for: 15m
+            labels:
+              severity: warning
+              team: business
+            annotations:
+              summary: "High payment failure rate"
+              description: "Payment failure rate is {{ $value | humanize }}% (threshold: 5%)."
+              runbook_url: "https://wiki.homegenie.com/runbooks/payment-failures"
+
+          # No Payments in Last Hour
+          - alert: NoPaymentsProcessed
+            expr: sum(increase(payment_completed_total[1h])) == 0
+            for: 1h
+            labels:
+              severity: warning
+              team: business
+            annotations:
+              summary: "No payments processed in last hour"
+              description: "Zero successful payments in the last hour. Verify payment gateway connectivity."
+
+      - name: homegenie_anomaly_detection
+        interval: 1m
+        rules:
+          # Sudden Traffic Spike
+          - alert: SuddenTrafficSpike
+            expr: |
+              (
+                sum(rate(http_server_requests_seconds_count[5m])) by (job)
+                /
+                sum(rate(http_server_requests_seconds_count[1h] offset 1h)) by (job)
+              ) > 5
+            for: 5m
+            labels:
+              severity: warning
+              team: platform
+            annotations:
+              summary: "Sudden traffic spike on {{ $labels.job }}"
+              description: "Traffic on {{ $labels.job }} is {{ $value }}x higher than 1 hour ago."
+
+          # Sudden Traffic Drop
+          - alert: SuddenTrafficDrop
+            expr: |
+              (
+                sum(rate(http_server_requests_seconds_count[5m])) by (job)
+                /
+                sum(rate(http_server_requests_seconds_count[1h] offset 1h)) by (job)
+              ) < 0.2
+            for: 10m
+            labels:
+              severity: warning
+              team: platform
+            annotations:
+              summary: "Sudden traffic drop on {{ $labels.job }}"
+              description: "Traffic on {{ $labels.job }} is {{ $value | humanizePercentage }} of normal (1 hour ago)."
+
+          # High Login Failure Rate
+          - alert: HighLoginFailureRate
+            expr: |
+              (
+                sum(rate(user_login_failed_total[5m]))
+                /
+                (sum(rate(user_login_success_total[5m])) + sum(rate(user_login_failed_total[5m])))
+              ) * 100 > 20
+            for: 10m
+            labels:
+              severity: warning
+              team: security
+            annotations:
+              summary: "High login failure rate"
+              description: "Login failure rate is {{ $value | humanize }}% (threshold: 20%). Possible security incident."
+              runbook_url: "https://wiki.homegenie.com/runbooks/security-incident"
+
+      - name: homegenie_pod_health
+        interval: 30s
+        rules:
+          # Pod Restart Loop
+          - alert: PodRestartLoop
+            expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+            for: 15m
+            labels:
+              severity: warning
+              team: platform
+            annotations:
+              summary: "Pod {{ $labels.pod }} restarting frequently"
+              description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has restarted {{ $value }} times in last 15 minutes."
+              runbook_url: "https://wiki.homegenie.com/runbooks/pod-restart-loop"
+
+          # Pod Not Ready
+          - alert: PodNotReady
+            expr: kube_pod_status_phase{phase!="Running"} == 1
+            for: 5m
+            labels:
+              severity: warning
+              team: platform
+            annotations:
+              summary: "Pod {{ $labels.pod }} not ready"
+              description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been in {{ $labels.phase }} phase for more than 5 minutes."
+
+          # High Pod Memory Usage
+          - alert: HighPodMemoryUsage
+            expr: |
+              (
+                container_memory_working_set_bytes{container!=""}
+                /
+                container_spec_memory_limit_bytes{container!=""}
+              ) * 100 > 90
+            for: 5m
+            labels:
+              severity: critical
+              team: platform
+            annotations:
+              summary: "High memory usage on pod {{ $labels.pod }}"
+              description: "Pod {{ $labels.pod }} memory usage is {{ $value | humanize }}% (threshold: 90%)."

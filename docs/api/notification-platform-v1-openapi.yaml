@@ -1,0 +1,808 @@
+openapi: 3.0.1
+info:
+  title: Notification Platform v1 API
+  description: |
+    **Simplified Notification Platform for Super App Architecture**
+
+    This is the v1 design focusing on:
+    - Mini-app notification tracking
+    - Simple string templates (no complex template engine)
+    - EMAIL and EVENT channels
+    - Platform-wide notification history
+
+    Key principles:
+    - ❌ NO i18n multi-language support
+    - ❌ NO template versioning
+    - ❌ NO A/B testing
+    - ❌ NO advanced template engine (Thymeleaf/Freemarker)
+    - ✅ YES mini-app tracking (mini_app_id)
+    - ✅ YES simple String.format templates
+    - ✅ YES EMAIL (SMTP) and EVENT (Kafka)
+    - ✅ YES unified notification history
+
+    **Architecture**:
+    ```
+    Mini-App (Maintenance/Marketplace)
+         ↓
+    Notification Platform v1
+         ↓
+    Channels: EMAIL (SMTP) + EVENT (Kafka)
+    ```
+
+  version: 1.0.0
+  contact:
+    name: HomeGenie Platform Team
+    email: platform@homegenie.com
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8084
+    description: Local development
+  - url: https://api.homegenie.com/notifications
+    description: Production
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Mini-App Notifications
+    description: Send notifications with mini-app context
+  - name: User Notifications
+    description: Retrieve user notification history
+  - name: Templates
+    description: Manage simple notification templates
+  - name: Health
+    description: Service health monitoring
+
+paths:
+  # ============================================
+  # MINI-APP NOTIFICATION OPERATIONS
+  # ============================================
+
+  /api/notifications/send:
+    post:
+      tags:
+        - Mini-App Notifications
+      summary: Send notification with mini-app context
+      description: |
+        **Core notification endpoint for Super App mini-apps**
+
+        This replaces the old internal notification methods by adding mini-app tracking.
+
+        **Business Flow**:
+        1. Mini-app calls this endpoint with userId + miniAppId + template
+        2. Platform validates mini-app exists and is active
+        3. Render template with provided variables (simple String.format)
+        4. Send via configured channel (EMAIL/EVENT)
+        5. Store notification record with mini_app_id
+        6. Return notification ID and status
+
+        **Template Rendering**:
+        Simple placeholder replacement:
+        - Template: "Order #{orderId} from {miniApp} completed. Amount: ${amount}"
+        - Variables: {orderId: "MAINT-123", miniApp: "Maintenance", amount: "100.00"}
+        - Result: "Order #MAINT-123 from Maintenance completed. Amount: $100.00"
+
+      operationId: sendNotification
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendNotificationRequest"
+            examples:
+              email_payment:
+                summary: Payment confirmation email
+                value:
+                  userId: 1
+                  miniAppId: "maintenance"
+                  type: "PAYMENT_COMPLETED"
+                  channel: "EMAIL"
+                  recipientEmail: "user@example.com"
+                  recipientName: "John Doe"
+                  templateId: "payment-completed"
+                  variables:
+                    orderId: "MAINT-12345"
+                    amount: "100.00"
+                    miniAppName: "Maintenance Service"
+                    paymentMethod: "Credit Card"
+              event_booking:
+                summary: Booking created event
+                value:
+                  userId: 2
+                  miniAppId: "marketplace"
+                  type: "BOOKING_CREATED"
+                  channel: "EVENT"
+                  templateId: "booking-created"
+                  variables:
+                    bookingId: "MKT-67890"
+                    serviceName: "Plumbing Service"
+                    scheduledDate: "2026-01-20"
+                    providerName: "ABC Plumbing"
+      responses:
+        "201":
+          description: Notification sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationResponse"
+              examples:
+                success:
+                  value:
+                    notificationId: 12345
+                    userId: 1
+                    miniAppId: "maintenance"
+                    type: "PAYMENT_COMPLETED"
+                    channel: "EMAIL"
+                    status: "SENT"
+                    recipient: "user@example.com"
+                    subject: "Payment Completed"
+                    sentAt: "2026-01-17T10:30:00Z"
+        "400":
+          description: Invalid request or template rendering error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Mini-app or template not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/notifications/send/bulk:
+    post:
+      tags:
+        - Mini-App Notifications
+      summary: Send notification to multiple users
+      description: |
+        **Bulk notification for mini-app campaigns or system announcements**
+
+        Use cases:
+        - System maintenance announcements
+        - New feature announcements per mini-app
+        - Promotional campaigns for specific mini-app users
+
+        **Limit**: Max 1000 users per request
+      operationId: sendBulkNotification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkNotificationRequest"
+      responses:
+        "202":
+          description: Bulk notification request accepted (async processing)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  batchId:
+                    type: string
+                    example: "batch_abc123"
+                  totalRecipients:
+                    type: integer
+                    example: 500
+                  estimatedCompletionTime:
+                    type: string
+                    format: date-time
+        "400":
+          description: Invalid request or too many recipients
+
+  # ============================================
+  # USER NOTIFICATION HISTORY
+  # ============================================
+
+  /api/notifications/user/{userId}:
+    get:
+      tags:
+        - User Notifications
+      summary: Get user notification history across all mini-apps
+      description: |
+        **Super App Feature**: Unified notification history
+
+        Returns all notifications sent to user across ALL mini-apps.
+        User can see single notification inbox regardless of which mini-app sent it.
+      operationId: getUserNotifications
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          example: 1
+        - name: miniAppId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by specific mini-app (optional)
+          example: "maintenance"
+        - name: channel
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [EMAIL, EVENT, SMS, PUSH]
+          description: Filter by channel
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, SENT, DELIVERED, FAILED, READ]
+        - name: unreadOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Return only unread notifications
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Notifications retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notifications:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/NotificationResponse"
+                  totalCount:
+                    type: integer
+                  unreadCount:
+                    type: integer
+                  page:
+                    type: integer
+                  pageSize:
+                    type: integer
+                  summary:
+                    $ref: "#/components/schemas/NotificationSummary"
+
+  /api/notifications/{notificationId}:
+    get:
+      tags:
+        - User Notifications
+      summary: Get notification details
+      operationId: getNotification
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Notification found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationResponse"
+        "404":
+          description: Notification not found
+
+  /api/notifications/{notificationId}/read:
+    put:
+      tags:
+        - User Notifications
+      summary: Mark notification as read
+      description: Update notification status to READ
+      operationId: markNotificationAsRead
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Marked as read successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationResponse"
+        "404":
+          description: Notification not found
+
+  /api/notifications/user/{userId}/read-all:
+    put:
+      tags:
+        - User Notifications
+      summary: Mark all user notifications as read
+      operationId: markAllAsRead
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: miniAppId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Mark read only for specific mini-app (optional)
+      responses:
+        "200":
+          description: All marked as read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updatedCount:
+                    type: integer
+                    example: 15
+
+  # ============================================
+  # MINI-APP ANALYTICS
+  # ============================================
+
+  /api/notifications/mini-app/{miniAppId}/stats:
+    get:
+      tags:
+        - Mini-App Notifications
+      summary: Get notification statistics for mini-app
+      description: |
+        **For mini-app developers**: View notification delivery stats
+      operationId: getMiniAppNotificationStats
+      parameters:
+        - name: miniAppId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "maintenance"
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Statistics retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MiniAppNotificationStats"
+
+  # ============================================
+  # TEMPLATE MANAGEMENT
+  # ============================================
+
+  /api/notifications/templates:
+    get:
+      tags:
+        - Templates
+      summary: List all notification templates
+      description: |
+        **Simple string templates** configured per mini-app
+      operationId: listTemplates
+      parameters:
+        - name: miniAppId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by mini-app
+      responses:
+        "200":
+          description: Templates retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NotificationTemplate"
+
+  /api/notifications/templates/{templateId}:
+    get:
+      tags:
+        - Templates
+      summary: Get template details
+      operationId: getTemplate
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "payment-completed"
+      responses:
+        "200":
+          description: Template found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationTemplate"
+        "404":
+          description: Template not found
+
+  # ============================================
+  # HEALTH CHECK
+  # ============================================
+
+  /actuator/health:
+    get:
+      tags:
+        - Health
+      summary: Service health check
+      operationId: health
+      security: []
+      responses:
+        "200":
+          description: Service is healthy
+
+# ============================================
+# COMPONENTS
+# ============================================
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Identity Service
+
+  schemas:
+    # Request Schemas
+    SendNotificationRequest:
+      type: object
+      required:
+        - userId
+        - miniAppId
+        - type
+        - channel
+        - templateId
+      properties:
+        userId:
+          type: integer
+          format: int64
+          description: User ID from Identity Service
+          example: 1
+        miniAppId:
+          type: string
+          description: Mini-app identifier (maintenance, marketplace, etc.)
+          example: "maintenance"
+        type:
+          type: string
+          enum:
+            - PAYMENT_COMPLETED
+            - PAYMENT_FAILED
+            - BOOKING_CREATED
+            - BOOKING_CONFIRMED
+            - BOOKING_COMPLETED
+            - JOB_ASSIGNED
+            - JOB_COMPLETED
+            - SYSTEM_ANNOUNCEMENT
+            - WELCOME
+            - PASSWORD_RESET
+          description: Notification type for categorization
+          example: "PAYMENT_COMPLETED"
+        channel:
+          type: string
+          enum: [EMAIL, EVENT, SMS, PUSH]
+          description: Notification channel (v1 supports EMAIL and EVENT only)
+          example: "EMAIL"
+        recipientEmail:
+          type: string
+          format: email
+          description: Recipient email (required if channel=EMAIL)
+          example: "user@example.com"
+        recipientName:
+          type: string
+          description: Recipient display name
+          example: "John Doe"
+        templateId:
+          type: string
+          description: Template identifier for content rendering
+          example: "payment-completed"
+        variables:
+          type: object
+          additionalProperties: true
+          description: Template variables for placeholder replacement
+          example:
+            orderId: "MAINT-12345"
+            amount: "100.00"
+            miniAppName: "Maintenance Service"
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Optional metadata for tracking
+          example:
+            campaignId: "promo-2026-01"
+            source: "mobile-app"
+
+    BulkNotificationRequest:
+      type: object
+      required:
+        - miniAppId
+        - type
+        - channel
+        - templateId
+        - userIds
+      properties:
+        miniAppId:
+          type: string
+          example: "maintenance"
+        type:
+          type: string
+          enum: [SYSTEM_ANNOUNCEMENT, FEATURE_ANNOUNCEMENT, PROMOTIONAL]
+          example: "SYSTEM_ANNOUNCEMENT"
+        channel:
+          type: string
+          enum: [EMAIL, EVENT]
+          example: "EMAIL"
+        templateId:
+          type: string
+          example: "system-maintenance"
+        userIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+          maxItems: 1000
+          description: User IDs to send notification (max 1000)
+          example: [1, 2, 3, 4, 5]
+        variables:
+          type: object
+          additionalProperties: true
+          description: Same variables for all recipients
+          example:
+            maintenanceDate: "2026-01-20"
+            downtime: "2 hours"
+
+    # Response Schemas
+    NotificationResponse:
+      type: object
+      properties:
+        notificationId:
+          type: integer
+          format: int64
+          example: 12345
+        userId:
+          type: integer
+          format: int64
+          example: 1
+        miniAppId:
+          type: string
+          description: Mini-app that sent this notification
+          example: "maintenance"
+        type:
+          type: string
+          example: "PAYMENT_COMPLETED"
+        channel:
+          type: string
+          enum: [EMAIL, EVENT, SMS, PUSH]
+          example: "EMAIL"
+        status:
+          type: string
+          enum: [PENDING, SENT, DELIVERED, FAILED, READ]
+          example: "SENT"
+        recipient:
+          type: string
+          description: Email or phone number
+          example: "user@example.com"
+        recipientName:
+          type: string
+          example: "John Doe"
+        subject:
+          type: string
+          example: "Payment Completed"
+        content:
+          type: string
+          description: Rendered notification content
+          example: "Your payment of $100.00 for order #MAINT-12345 has been completed."
+        templateId:
+          type: string
+          example: "payment-completed"
+        metadata:
+          type: object
+          additionalProperties: true
+        isRead:
+          type: boolean
+          description: Whether user has read this notification
+          example: false
+        sentAt:
+          type: string
+          format: date-time
+          example: "2026-01-17T10:30:00Z"
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-01-17T10:30:00Z"
+
+    NotificationSummary:
+      type: object
+      description: Summary statistics for user notifications
+      properties:
+        totalNotifications:
+          type: integer
+          example: 50
+        unreadCount:
+          type: integer
+          example: 5
+        byMiniApp:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              count:
+                type: integer
+              unreadCount:
+                type: integer
+          example:
+            maintenance:
+              count: 30
+              unreadCount: 3
+            marketplace:
+              count: 20
+              unreadCount: 2
+        byChannel:
+          type: object
+          additionalProperties:
+            type: integer
+          example:
+            EMAIL: 45
+            EVENT: 5
+
+    MiniAppNotificationStats:
+      type: object
+      description: Statistics for mini-app notifications
+      properties:
+        miniAppId:
+          type: string
+          example: "maintenance"
+        period:
+          type: object
+          properties:
+            startDate:
+              type: string
+              format: date
+            endDate:
+              type: string
+              format: date
+        totalSent:
+          type: integer
+          example: 1500
+        totalDelivered:
+          type: integer
+          example: 1450
+        totalFailed:
+          type: integer
+          example: 50
+        deliveryRate:
+          type: number
+          format: double
+          description: Delivery success rate (0.0 - 1.0)
+          example: 0.967
+        readRate:
+          type: number
+          format: double
+          description: Read rate for EMAIL notifications (0.0 - 1.0)
+          example: 0.75
+        byType:
+          type: object
+          additionalProperties:
+            type: integer
+          example:
+            PAYMENT_COMPLETED: 500
+            JOB_ASSIGNED: 300
+            JOB_COMPLETED: 700
+        byChannel:
+          type: object
+          additionalProperties:
+            type: integer
+          example:
+            EMAIL: 1200
+            EVENT: 300
+
+    NotificationTemplate:
+      type: object
+      description: Simple string template for notifications
+      properties:
+        templateId:
+          type: string
+          example: "payment-completed"
+        miniAppId:
+          type: string
+          description: Mini-app this template belongs to
+          example: "maintenance"
+        name:
+          type: string
+          example: "Payment Completed"
+        description:
+          type: string
+          example: "Sent when user payment is completed successfully"
+        channel:
+          type: string
+          enum: [EMAIL, EVENT]
+          example: "EMAIL"
+        subjectTemplate:
+          type: string
+          description: Email subject template (simple String.format style)
+          example: "Payment Completed - Order #{orderId}"
+        contentTemplate:
+          type: string
+          description: Notification content template with placeholders
+          example: |
+            Hello {recipientName},
+
+            Your payment of ${amount} for order #{orderId} from {miniAppName} has been completed successfully.
+
+            Payment Method: {paymentMethod}
+
+            Thank you for using HomeGenie!
+        requiredVariables:
+          type: array
+          items:
+            type: string
+          description: Required template variables
+          example: ["orderId", "amount", "miniAppName", "paymentMethod"]
+        exampleVariables:
+          type: object
+          additionalProperties: true
+          description: Example values for testing
+          example:
+            orderId: "MAINT-12345"
+            amount: "100.00"
+            miniAppName: "Maintenance Service"
+            paymentMethod: "Credit Card"
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Template not found"
+        message:
+          type: string
+          example: "Template 'payment-completed' does not exist"
+        timestamp:
+          type: string
+          format: date-time
+        path:
+          type: string
+          example: "/api/notifications/send"

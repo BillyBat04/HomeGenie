@@ -1,0 +1,22 @@
+# ===== Maven =====
+**/target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# ===== Logs =====
+*.log
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+
+# ===== Env & config =====
+.env
+*.local.yml
+
+# ===== Build / temp =====
+out/

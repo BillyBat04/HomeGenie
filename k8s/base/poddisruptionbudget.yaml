@@ -1,0 +1,60 @@
+---
+# PodDisruptionBudget for Gateway Service
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: gateway-service-pdb
+  namespace: homegenie
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: gateway-service
+---
+# PodDisruptionBudget for User Service
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: user-service-pdb
+  namespace: homegenie
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: user-service
+---
+# PodDisruptionBudget for Maintenance Service
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: maintenance-service-pdb
+  namespace: homegenie
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: maintenance-service
+---
+# PodDisruptionBudget for Payment Service
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: payment-service-pdb
+  namespace: homegenie
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: payment-service
+---
+# PodDisruptionBudget for Notification Service
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: notification-service-pdb
+  namespace: homegenie
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: notification-service

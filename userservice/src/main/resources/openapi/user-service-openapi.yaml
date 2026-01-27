@@ -1,0 +1,229 @@
+openapi: 3.0.1
+info:
+  title: User Service API
+  description: User authentication and profile management
+  version: 1.0.0
+  contact:
+    name: HomeGenie Team
+servers:
+  - url: http://localhost:8081
+    description: Local development
+  - url: http://production-url:8081
+    description: Production
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Authentication
+    description: User authentication operations
+
+paths:
+  /api/users/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register new user
+      description: Register a new user with email and password
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRegistrationRequest"
+            example:
+              fullName: "Nguyễn Văn An"
+              email: "nguyenvana@example.com"
+              phoneNumber: "0901234567"
+              password: "SecurePass123!"
+              address: "123 Đường ABC, Quận 1, TP.HCM"
+              role: "RESIDENT"
+      responses:
+        "200":
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterResponse"
+              example:
+                message: "User registered successfully"
+                userId: 1
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+              example:
+                message: "Email already exists"
+                success: false
+
+  /api/users/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user and return JWT token
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            example:
+              email: "nguyenvana@example.com"
+              password: "SecurePass123!"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+              example:
+                token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                userId: 1
+                fullName: "Nguyễn Văn An"
+                email: "nguyenvana@example.com"
+                phoneNumber: "0901234567"
+                role: "RESIDENT"
+                address: "123 Đường ABC, Quận 1, TP.HCM"
+                createdAt: "2024-01-15T10:30:00"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+              example:
+                message: "Invalid credentials"
+                success: false
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /api/users/login
+
+  schemas:
+    UserRegistrationRequest:
+      type: object
+      required:
+        - fullName
+        - email
+        - password
+        - role
+      properties:
+        fullName:
+          type: string
+          description: User full name
+          example: "Nguyễn Văn An"
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: "nguyenvana@example.com"
+        phoneNumber:
+          type: string
+          description: Phone number
+          example: "0901234567"
+        password:
+          type: string
+          format: password
+          description: User password
+          example: "SecurePass123!"
+        address:
+          type: string
+          description: User address
+          example: "123 Đường ABC, Quận 1, TP.HCM"
+        role:
+          type: string
+          enum: [RESIDENT, ADMIN, TECHNICIAN]
+          description: User role
+          example: "RESIDENT"
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: User email
+          example: "nguyenvana@example.com"
+        password:
+          type: string
+          format: password
+          description: User password
+          example: "SecurePass123!"
+
+    UserResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT access token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        userId:
+          type: integer
+          format: int64
+          description: User ID
+          example: 1
+        fullName:
+          type: string
+          description: User full name
+          example: "Nguyễn Văn An"
+        email:
+          type: string
+          format: email
+          description: User email
+          example: "nguyenvana@example.com"
+        phoneNumber:
+          type: string
+          description: Phone number
+          example: "0901234567"
+        role:
+          type: string
+          enum: [RESIDENT, ADMIN, TECHNICIAN]
+          description: User role
+          example: "RESIDENT"
+        address:
+          type: string
+          description: User address
+          example: "123 Đường ABC, Quận 1, TP.HCM"
+        createdAt:
+          type: string
+          format: date-time
+          description: Account creation timestamp
+          example: "2024-01-15T10:30:00"
+
+    RegisterResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Registration status message
+          example: "User registered successfully"
+        userId:
+          type: integer
+          format: int64
+          description: New user ID
+          example: 1
+
+    ApiResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Response message
+          example: "Operation successful"
+        success:
+          type: boolean
+          description: Success status
+          example: true

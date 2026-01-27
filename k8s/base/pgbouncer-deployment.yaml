@@ -1,0 +1,155 @@
+---
+# PgBouncer Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgbouncer
+  namespace: homegenie
+  labels:
+    app: pgbouncer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pgbouncer
+  template:
+    metadata:
+      labels:
+        app: pgbouncer
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: pgbouncer
+          image: edoburu/pgbouncer:1.21.0
+          ports:
+            - name: pgbouncer
+              containerPort: 5432
+              protocol: TCP
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://postgres:postgres@postgres-service:5432/postgres"
+            - name: POOL_MODE
+              value: "transaction"
+            - name: MAX_CLIENT_CONN
+              value: "1000"
+            - name: DEFAULT_POOL_SIZE
+              value: "25"
+            - name: MIN_POOL_SIZE
+              value: "10"
+            - name: RESERVE_POOL_SIZE
+              value: "5"
+            - name: RESERVE_POOL_TIMEOUT
+              value: "3"
+            - name: MAX_DB_CONNECTIONS
+              value: "100"
+            - name: MAX_USER_CONNECTIONS
+              value: "100"
+            - name: SERVER_IDLE_TIMEOUT
+              value: "600"
+            - name: SERVER_LIFETIME
+              value: "3600"
+            - name: SERVER_CONNECT_TIMEOUT
+              value: "15"
+            - name: QUERY_TIMEOUT
+              value: "30"
+            - name: QUERY_WAIT_TIMEOUT
+              value: "120"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: pgbouncer-config
+              mountPath: /etc/pgbouncer
+      volumes:
+        - name: pgbouncer-config
+          configMap:
+            name: pgbouncer-config
+---
+# PgBouncer Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgbouncer-service
+  namespace: homegenie
+  labels:
+    app: pgbouncer
+spec:
+  type: ClusterIP
+  selector:
+    app: pgbouncer
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+      protocol: TCP
+---
+# PgBouncer ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgbouncer-config
+  namespace: homegenie
+data:
+  pgbouncer.ini: |
+    [databases]
+    homegenie_users = host=postgres-service port=5432 dbname=homegenie_users
+    homegenie_maintenance = host=postgres-service port=5432 dbname=homegenie_maintenance
+    homegenie_payments = host=postgres-service port=5432 dbname=homegenie_payments
+    homegenie_notifications = host=postgres-service port=5432 dbname=homegenie_notifications
+
+    [pgbouncer]
+    listen_addr = 0.0.0.0
+    listen_port = 5432
+    auth_type = md5
+    auth_file = /etc/pgbouncer/userlist.txt
+
+    # Pool configuration
+    pool_mode = transaction
+    max_client_conn = 1000
+    default_pool_size = 25
+    min_pool_size = 10
+    reserve_pool_size = 5
+    reserve_pool_timeout = 3
+    max_db_connections = 100
+    max_user_connections = 100
+
+    # Timeouts
+    server_idle_timeout = 600
+    server_lifetime = 3600
+    server_connect_timeout = 15
+    query_timeout = 30
+    query_wait_timeout = 120
+
+    # Logging
+    log_connections = 1
+    log_disconnections = 1
+    log_pooler_errors = 1
+
+    # Performance
+    tcp_keepalive = 1
+    tcp_keepidle = 60
+    tcp_keepintvl = 10
+    tcp_keepcnt = 5
+
+  userlist.txt: |
+    "user_service" "md5..."
+    "maintenance_service" "md5..."
+    "payment_service" "md5..."
+    "notification_service" "md5..."

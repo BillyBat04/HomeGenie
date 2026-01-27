@@ -1,0 +1,345 @@
+{
+    "dashboard": {
+        "title": "HomeGenie - Item Scheduler Monitoring",
+        "tags": [
+            "homegenie",
+            "scheduler",
+            "items"
+        ],
+        "timezone": "browser",
+        "schemaVersion": 27,
+        "version": 0,
+        "refresh": "30s",
+        "panels": [
+            {
+                "id": 1,
+                "type": "stat",
+                "title": "Maintenance Reminders Today",
+                "gridPos": {
+                    "x": 0,
+                    "y": 0,
+                    "w": 6,
+                    "h": 4
+                },
+                "targets": [
+                    {
+                        "expr": "sum(scheduler_maintenance_reminder_total)",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "value": null,
+                                    "color": "green"
+                                },
+                                {
+                                    "value": 10,
+                                    "color": "yellow"
+                                },
+                                {
+                                    "value": 50,
+                                    "color": "red"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "id": 2,
+                "type": "stat",
+                "title": "Warranty Alerts Today",
+                "gridPos": {
+                    "x": 6,
+                    "y": 0,
+                    "w": 6,
+                    "h": 4
+                },
+                "targets": [
+                    {
+                        "expr": "sum(scheduler_warranty_reminder_total)",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "value": null,
+                                    "color": "green"
+                                },
+                                {
+                                    "value": 10,
+                                    "color": "yellow"
+                                },
+                                {
+                                    "value": 50,
+                                    "color": "red"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "id": 3,
+                "type": "stat",
+                "title": "Scheduler Failures (24h)",
+                "gridPos": {
+                    "x": 12,
+                    "y": 0,
+                    "w": 6,
+                    "h": 4
+                },
+                "targets": [
+                    {
+                        "expr": "sum(increase(scheduler_maintenance_reminder_failures[24h])) + sum(increase(scheduler_warranty_reminder_failures[24h]))",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "value": null,
+                                    "color": "green"
+                                },
+                                {
+                                    "value": 1,
+                                    "color": "yellow"
+                                },
+                                {
+                                    "value": 3,
+                                    "color": "red"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "id": 4,
+                "type": "stat",
+                "title": "Duplicates Prevented Today",
+                "gridPos": {
+                    "x": 18,
+                    "y": 0,
+                    "w": 6,
+                    "h": 4
+                },
+                "targets": [
+                    {
+                        "expr": "sum(scheduler_maintenance_reminder_duplicates_skipped) + sum(scheduler_warranty_reminder_duplicates_skipped)",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "value": null,
+                                    "color": "blue"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "id": 5,
+                "type": "graph",
+                "title": "Maintenance Reminders by Urgency (Last 7 Days)",
+                "gridPos": {
+                    "x": 0,
+                    "y": 4,
+                    "w": 12,
+                    "h": 8
+                },
+                "targets": [
+                    {
+                        "expr": "sum(scheduler_maintenance_reminder_total{type=\"overdue\"})",
+                        "legendFormat": "Overdue",
+                        "refId": "A"
+                    },
+                    {
+                        "expr": "sum(scheduler_maintenance_reminder_total{type=\"due_now\"})",
+                        "legendFormat": "Due Now",
+                        "refId": "B"
+                    },
+                    {
+                        "expr": "sum(scheduler_maintenance_reminder_total{type=\"due_soon\"})",
+                        "legendFormat": "Due Soon",
+                        "refId": "C"
+                    }
+                ],
+                "yaxes": [
+                    {
+                        "format": "short",
+                        "label": "Count"
+                    },
+                    {
+                        "format": "short"
+                    }
+                ]
+            },
+            {
+                "id": 6,
+                "type": "graph",
+                "title": "Warranty Alerts by Urgency (Last 7 Days)",
+                "gridPos": {
+                    "x": 12,
+                    "y": 4,
+                    "w": 12,
+                    "h": 8
+                },
+                "targets": [
+                    {
+                        "expr": "sum(scheduler_warranty_reminder_total{type=\"expired\"})",
+                        "legendFormat": "Expired",
+                        "refId": "A"
+                    },
+                    {
+                        "expr": "sum(scheduler_warranty_reminder_total{type=\"expiring_1day\"})",
+                        "legendFormat": "Expiring 1 Day",
+                        "refId": "B"
+                    },
+                    {
+                        "expr": "sum(scheduler_warranty_reminder_total{type=\"expiring_7days\"})",
+                        "legendFormat": "Expiring 7 Days",
+                        "refId": "C"
+                    },
+                    {
+                        "expr": "sum(scheduler_warranty_reminder_total{type=\"expiring_30days\"})",
+                        "legendFormat": "Expiring 30 Days",
+                        "refId": "D"
+                    }
+                ],
+                "yaxes": [
+                    {
+                        "format": "short",
+                        "label": "Count"
+                    },
+                    {
+                        "format": "short"
+                    }
+                ]
+            },
+            {
+                "id": 7,
+                "type": "graph",
+                "title": "Scheduler Execution Time",
+                "gridPos": {
+                    "x": 0,
+                    "y": 12,
+                    "w": 12,
+                    "h": 8
+                },
+                "targets": [
+                    {
+                        "expr": "histogram_quantile(0.95, sum(rate(scheduler_maintenance_reminder_seconds_bucket[5m])) by (le))",
+                        "legendFormat": "Maintenance P95",
+                        "refId": "A"
+                    },
+                    {
+                        "expr": "histogram_quantile(0.95, sum(rate(scheduler_warranty_reminder_seconds_bucket[5m])) by (le))",
+                        "legendFormat": "Warranty P95",
+                        "refId": "B"
+                    }
+                ],
+                "yaxes": [
+                    {
+                        "format": "s",
+                        "label": "Time"
+                    },
+                    {
+                        "format": "short"
+                    }
+                ]
+            },
+            {
+                "id": 8,
+                "type": "graph",
+                "title": "Scheduler Success Rate (24h)",
+                "gridPos": {
+                    "x": 12,
+                    "y": 12,
+                    "w": 12,
+                    "h": 8
+                },
+                "targets": [
+                    {
+                        "expr": "sum(increase(scheduler_maintenance_reminder_success[24h])) / (sum(increase(scheduler_maintenance_reminder_success[24h])) + sum(increase(scheduler_maintenance_reminder_failures[24h]))) * 100",
+                        "legendFormat": "Maintenance Success %",
+                        "refId": "A"
+                    },
+                    {
+                        "expr": "sum(increase(scheduler_warranty_reminder_success[24h])) / (sum(increase(scheduler_warranty_reminder_success[24h])) + sum(increase(scheduler_warranty_reminder_failures[24h]))) * 100",
+                        "legendFormat": "Warranty Success %",
+                        "refId": "B"
+                    }
+                ],
+                "yaxes": [
+                    {
+                        "format": "percent",
+                        "label": "Success Rate",
+                        "min": 0,
+                        "max": 100
+                    },
+                    {
+                        "format": "short"
+                    }
+                ]
+            },
+            {
+                "id": 9,
+                "type": "table",
+                "title": "Recent Scheduler Executions",
+                "gridPos": {
+                    "x": 0,
+                    "y": 20,
+                    "w": 24,
+                    "h": 6
+                },
+                "targets": [
+                    {
+                        "expr": "scheduler_maintenance_reminder_executions_total",
+                        "refId": "A",
+                        "format": "table"
+                    },
+                    {
+                        "expr": "scheduler_warranty_reminder_executions_total",
+                        "refId": "B",
+                        "format": "table"
+                    }
+                ],
+                "transformations": [
+                    {
+                        "id": "merge"
+                    }
+                ]
+            }
+        ]
+    }
+}

@@ -1,0 +1,127 @@
+server:
+  port: 8086
+  shutdown: graceful
+
+spring:
+  application:
+    name: identity-platform-service
+
+  # ✅ SHARED DATABASE with User Service (No data migration needed)
+  datasource:
+    url: jdbc:postgresql://localhost:5432/homegenie_users
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate # ✅ Never auto-update schema
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: false
+
+  # Redis for caching and session management
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: redis123
+      timeout: 60000
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+
+# JWT Configuration (Same as User Service for compatibility)
+jwt:
+  secret: ${JWT_SECRET:ZiF0E5N2L7IGflymHnJVCzMcpRbk8vT3}
+  access-token-expiration: 86400000 # 24 hours
+  refresh-token-expiration: 604800000 # 7 days
+
+# Platform Feature Flags
+platform:
+  identity:
+    enabled: true
+    version: v1
+
+  feature-flags:
+    # Shadow mode: Run parallel with User Service but don't return response to users
+    shadow-mode:
+      enabled: false
+      log-mismatches: true
+      alert-on-mismatch: true
+
+    # Gradual traffic migration
+    traffic-split:
+      enabled: false
+      percentage: 0 # Start with 0%, gradually increase to 100%
+
+    # Auto-rollback if error rate too high
+    auto-rollback:
+      enabled: true
+      error-rate-threshold: 1.0 # Rollback if error rate > 1%
+      response-time-threshold: 200 # Rollback if p95 > 200ms
+
+# Actuator endpoints for health checks
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      environment: ${ENVIRONMENT:development}
+    export:
+      prometheus:
+        enabled: true
+
+# Logging
+logging:
+  level:
+    com.homegenie.platform.identity: INFO
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/identity-service.log
+    max-size: 10MB
+    max-history: 30
+
+# OpenAPI Documentation
+springdoc:
+  api-docs:
+    path: /platform/identity/v1/api-docs
+  swagger-ui:
+    path: /platform/identity/v1/swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+
+# Application Info
+info:
+  app:
+    name: Identity Platform Service
+    description: Platform-level Identity and Authentication Service
+    version: 1.0.0
+    phase: Phase 1 - Development

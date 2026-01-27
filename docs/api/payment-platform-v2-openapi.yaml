@@ -1,0 +1,760 @@
+openapi: 3.0.1
+info:
+  title: Payment Platform v2 API
+  description: |
+    **Simplified Payment Platform for Super App Architecture**
+    
+    This is the v2 design focusing on:
+    - Mini-app transaction tracking
+    - Static commission calculation
+    - Reusing Stripe balance (no separate wallet)
+    - Platform-wide payment history
+    
+    Key differences from v1:
+    - ❌ NO separate Wallet service
+    - ❌ NO deposit/withdraw/internal transfer
+    - ❌ NO complex commission engine
+    - ✅ YES mini-app tracking (mini_app_id)
+    - ✅ YES static commission config per mini-app
+    - ✅ YES unified transaction history
+    
+    **Architecture**:
+    ```
+    Mini-App (Maintenance/Marketplace)
+         ↓
+    Payment Platform v2
+         ↓
+    Stripe Payment (with mini_app_id metadata)
+    ```
+    
+  version: 2.0.0
+  contact:
+    name: HomeGenie Platform Team
+    email: platform@homegenie.com
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8083
+    description: Local development
+  - url: https://api.homegenie.com/payments
+    description: Production
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Mini-App Payments
+    description: Payment operations with mini-app context
+  - name: Platform Analytics
+    description: Cross-mini-app payment analytics
+  - name: Commission Management
+    description: Commission calculation and tracking
+  - name: Health
+    description: Service health monitoring
+
+paths:
+  # ============================================
+  # MINI-APP PAYMENT OPERATIONS
+  # ============================================
+  
+  /api/payments/mini-app:
+    post:
+      tags:
+        - Mini-App Payments
+      summary: Create payment with mini-app context
+      description: |
+        **Core payment endpoint for Super App mini-apps**
+        
+        This replaces the old `/api/payments` endpoint by adding mini-app tracking.
+        
+        **Business Flow**:
+        1. Mini-app calls this endpoint with orderId + miniAppId
+        2. Platform validates mini-app exists and is active
+        3. Create Stripe Payment Intent with mini_app_id in metadata
+        4. Calculate commission based on mini-app config
+        5. Publish PaymentCompletedEvent to Kafka
+        6. Return payment details to mini-app
+        
+        **Commission Calculation**:
+        - Maintenance mini-app: 10% commission
+        - Marketplace mini-app: 15% commission
+        - (Configurable in application.yml)
+        
+      operationId: createMiniAppPayment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MiniAppPaymentRequest'
+            examples:
+              maintenance:
+                summary: Maintenance service payment
+                value:
+                  userId: 1
+                  orderId: "MAINT-12345"
+                  miniAppId: "maintenance"
+                  amount: 100.00
+                  currency: "USD"
+                  description: "Fix air conditioner"
+              marketplace:
+                summary: Marketplace booking payment
+                value:
+                  userId: 2
+                  orderId: "MKT-67890"
+                  miniAppId: "marketplace"
+                  amount: 250.00
+                  currency: "USD"
+                  description: "Plumbing service booking"
+      responses:
+        '201':
+          description: Payment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MiniAppPaymentResponse'
+              examples:
+                success:
+                  value:
+                    paymentId: "pay_1234567890"
+                    orderId: "MAINT-12345"
+                    miniAppId: "maintenance"
+                    amount: 100.00
+                    currency: "USD"
+                    status: "PENDING"
+                    commission: 10.00
+                    commissionRate: 0.10
+                    stripePaymentIntentId: "pi_abc123xyz"
+                    clientSecret: "pi_abc123xyz_secret_def456"
+                    createdAt: "2026-01-17T10:30:00Z"
+        '400':
+          description: Invalid request or Stripe error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Mini-app not found or inactive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Payment already exists for this order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /api/payments/mini-app/{paymentId}:
+    get:
+      tags:
+        - Mini-App Payments
+      summary: Get payment details
+      operationId: getMiniAppPayment
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Payment ID
+          example: "pay_1234567890"
+      responses:
+        '200':
+          description: Payment found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MiniAppPaymentResponse'
+        '404':
+          description: Payment not found
+  
+  /api/payments/mini-app/{paymentId}/status:
+    patch:
+      tags:
+        - Mini-App Payments
+      summary: Update payment status
+      description: |
+        Called by Stripe webhook or internal services to update payment status.
+        
+        **Status Flow**:
+        PENDING → PROCESSING → SUCCEEDED/FAILED
+      operationId: updatePaymentStatus
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [PENDING, PROCESSING, SUCCEEDED, FAILED, CANCELED]
+                failureReason:
+                  type: string
+                  description: Required if status is FAILED
+      responses:
+        '200':
+          description: Status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MiniAppPaymentResponse'
+  
+  /api/payments/mini-app/{paymentId}/refund:
+    post:
+      tags:
+        - Mini-App Payments
+      summary: Refund payment
+      description: |
+        **Refund Logic**:
+        - Full refund: amount = original payment amount
+        - Partial refund: amount < original payment amount
+        - Commission is refunded proportionally
+        
+        **Business Rules**:
+        - Only SUCCEEDED payments can be refunded
+        - Total refunds cannot exceed original amount
+        - Commission refund = refund_amount * commission_rate
+      operationId: refundMiniAppPayment
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefundRequest'
+            examples:
+              full:
+                summary: Full refund
+                value:
+                  amount: 100.00
+                  reason: "Service canceled by customer"
+              partial:
+                summary: Partial refund
+                value:
+                  amount: 50.00
+                  reason: "Partial work completed"
+      responses:
+        '200':
+          description: Refund processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefundResponse'
+        '400':
+          description: Invalid refund request
+        '409':
+          description: Payment not refundable (status not SUCCEEDED)
+  
+  # ============================================
+  # PLATFORM ANALYTICS
+  # ============================================
+  
+  /api/payments/user/{userId}/history:
+    get:
+      tags:
+        - Platform Analytics
+      summary: Get user payment history across all mini-apps
+      description: |
+        **Super App Feature**: Unified payment history
+        
+        Returns all payments made by user across ALL mini-apps.
+        User can see single payment history regardless of which mini-app was used.
+      operationId: getUserPaymentHistory
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          example: 1
+        - name: miniAppId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by specific mini-app (optional)
+          example: "maintenance"
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, PROCESSING, SUCCEEDED, FAILED, CANCELED]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Payment history retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MiniAppPaymentResponse'
+                  totalCount:
+                    type: integer
+                  page:
+                    type: integer
+                  pageSize:
+                    type: integer
+                  summary:
+                    $ref: '#/components/schemas/PaymentSummary'
+  
+  /api/payments/mini-app/{miniAppId}/transactions:
+    get:
+      tags:
+        - Platform Analytics
+      summary: Get all transactions for a mini-app
+      description: |
+        **For mini-app developers**: View all payments processed through your mini-app
+      operationId: getMiniAppTransactions
+      parameters:
+        - name: miniAppId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "maintenance"
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Transactions retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transactions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MiniAppPaymentResponse'
+                  analytics:
+                    $ref: '#/components/schemas/MiniAppAnalytics'
+  
+  # ============================================
+  # COMMISSION MANAGEMENT
+  # ============================================
+  
+  /api/payments/commission/{miniAppId}:
+    get:
+      tags:
+        - Commission Management
+      summary: Get commission summary for mini-app
+      description: |
+        **For platform admin**: View commission earned from a mini-app
+        
+        **Calculation**:
+        - Total commission = sum of (payment_amount * commission_rate)
+        - Only SUCCEEDED payments are included
+      operationId: getMiniAppCommission
+      parameters:
+        - name: miniAppId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+          example: "2026-01-01"
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+          example: "2026-01-31"
+      responses:
+        '200':
+          description: Commission summary retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommissionSummary'
+  
+  /api/payments/commission/config:
+    get:
+      tags:
+        - Commission Management
+      summary: Get commission configuration
+      description: |
+        **Static commission rates per mini-app** (configured in application.yml)
+      operationId: getCommissionConfig
+      responses:
+        '200':
+          description: Commission config retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: number
+                  format: double
+                example:
+                  maintenance: 0.10
+                  marketplace: 0.15
+                  finance: 0.05
+  
+  # ============================================
+  # HEALTH CHECK
+  # ============================================
+  
+  /actuator/health:
+    get:
+      tags:
+        - Health
+      summary: Service health check
+      operationId: health
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+
+# ============================================
+# COMPONENTS
+# ============================================
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Identity Service
+  
+  schemas:
+    # Request Schemas
+    MiniAppPaymentRequest:
+      type: object
+      required:
+        - userId
+        - orderId
+        - miniAppId
+        - amount
+      properties:
+        userId:
+          type: integer
+          format: int64
+          description: User ID from Identity Service
+          example: 1
+        orderId:
+          type: string
+          description: Unique order ID from mini-app (MUST be unique per mini-app)
+          example: "MAINT-12345"
+        miniAppId:
+          type: string
+          description: Mini-app identifier (maintenance, marketplace, finance, etc.)
+          example: "maintenance"
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+          description: Payment amount
+          example: 100.00
+        currency:
+          type: string
+          default: "USD"
+          enum: [USD, EUR, GBP]
+          example: "USD"
+        description:
+          type: string
+          maxLength: 500
+          description: Payment description shown to user
+          example: "Fix air conditioner - Job #12345"
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Optional metadata from mini-app (stored as JSON)
+          example:
+            jobId: 12345
+            technicianId: 789
+    
+    RefundRequest:
+      type: object
+      required:
+        - amount
+      properties:
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+          description: Refund amount (full or partial)
+          example: 50.00
+        reason:
+          type: string
+          maxLength: 500
+          description: Reason for refund
+          example: "Service canceled"
+    
+    # Response Schemas
+    MiniAppPaymentResponse:
+      type: object
+      properties:
+        paymentId:
+          type: string
+          description: Platform payment ID
+          example: "pay_1234567890"
+        orderId:
+          type: string
+          description: Order ID from mini-app
+          example: "MAINT-12345"
+        miniAppId:
+          type: string
+          description: Mini-app that created this payment
+          example: "maintenance"
+        userId:
+          type: integer
+          format: int64
+          example: 1
+        amount:
+          type: number
+          format: double
+          example: 100.00
+        currency:
+          type: string
+          example: "USD"
+        status:
+          type: string
+          enum: [PENDING, PROCESSING, SUCCEEDED, FAILED, CANCELED]
+          example: "SUCCEEDED"
+        commission:
+          type: number
+          format: double
+          description: Commission amount calculated
+          example: 10.00
+        commissionRate:
+          type: number
+          format: double
+          description: Commission rate applied (from config)
+          example: 0.10
+        stripePaymentIntentId:
+          type: string
+          description: Stripe Payment Intent ID
+          example: "pi_abc123xyz"
+        clientSecret:
+          type: string
+          description: Stripe client secret for frontend
+          example: "pi_abc123xyz_secret_def456"
+        description:
+          type: string
+          example: "Fix air conditioner"
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-01-17T10:30:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2026-01-17T10:35:00Z"
+    
+    RefundResponse:
+      type: object
+      properties:
+        refundId:
+          type: string
+          example: "ref_abc123"
+        paymentId:
+          type: string
+          example: "pay_1234567890"
+        amount:
+          type: number
+          format: double
+          example: 50.00
+        commissionRefund:
+          type: number
+          format: double
+          description: Commission refunded (proportional)
+          example: 5.00
+        status:
+          type: string
+          enum: [PENDING, SUCCEEDED, FAILED]
+          example: "SUCCEEDED"
+        reason:
+          type: string
+          example: "Service canceled"
+        createdAt:
+          type: string
+          format: date-time
+    
+    PaymentSummary:
+      type: object
+      description: Summary statistics for payment history
+      properties:
+        totalPayments:
+          type: integer
+          example: 25
+        totalAmount:
+          type: number
+          format: double
+          example: 2500.00
+        succeededCount:
+          type: integer
+          example: 23
+        failedCount:
+          type: integer
+          example: 2
+        byMiniApp:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              count:
+                type: integer
+              amount:
+                type: number
+                format: double
+          example:
+            maintenance:
+              count: 15
+              amount: 1500.00
+            marketplace:
+              count: 10
+              amount: 1000.00
+    
+    MiniAppAnalytics:
+      type: object
+      description: Analytics for mini-app transactions
+      properties:
+        miniAppId:
+          type: string
+          example: "maintenance"
+        period:
+          type: object
+          properties:
+            startDate:
+              type: string
+              format: date
+            endDate:
+              type: string
+              format: date
+        totalTransactions:
+          type: integer
+          example: 150
+        totalAmount:
+          type: number
+          format: double
+          example: 15000.00
+        totalCommission:
+          type: number
+          format: double
+          example: 1500.00
+        successRate:
+          type: number
+          format: double
+          description: Success rate (0.0 - 1.0)
+          example: 0.95
+        averageTransactionAmount:
+          type: number
+          format: double
+          example: 100.00
+    
+    CommissionSummary:
+      type: object
+      properties:
+        miniAppId:
+          type: string
+          example: "maintenance"
+        commissionRate:
+          type: number
+          format: double
+          example: 0.10
+        period:
+          type: object
+          properties:
+            startDate:
+              type: string
+              format: date
+            endDate:
+              type: string
+              format: date
+        totalPayments:
+          type: integer
+          example: 150
+        totalPaymentAmount:
+          type: number
+          format: double
+          description: Total payment amount processed
+          example: 15000.00
+        totalCommissionEarned:
+          type: number
+          format: double
+          description: Total commission earned by platform
+          example: 1500.00
+        paymentsByStatus:
+          type: object
+          additionalProperties:
+            type: integer
+          example:
+            SUCCEEDED: 142
+            FAILED: 5
+            CANCELED: 3
+    
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Invalid mini-app ID"
+        message:
+          type: string
+          example: "Mini-app 'unknown' not found or inactive"
+        timestamp:
+          type: string
+          format: date-time
+        path:
+          type: string
+          example: "/api/payments/mini-app"

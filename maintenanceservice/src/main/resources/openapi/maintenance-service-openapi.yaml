@@ -1,0 +1,467 @@
+openapi: 3.0.1
+info:
+  title: Maintenance Service API
+  description: |
+    Maintenance request management with AI classification, image upload, 
+    technician assignment, and automated notifications via email and voice assistant
+  version: 1.0.0
+  contact:
+    name: HomeGenie Team
+servers:
+  - url: http://localhost:8082
+    description: Local development
+  - url: http://production-url:8082
+    description: Production
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Maintenance Requests
+    description: CRUD operations for maintenance requests
+  - name: Assignment
+    description: Technician assignment operations
+  - name: Reference Data
+    description: Categories and technicians lookup
+
+paths:
+  /api/maintenance/create:
+    post:
+      tags:
+        - Maintenance Requests
+      summary: Create maintenance request
+      description: Create new maintenance request with AI classification and image upload (AWS S3)
+      operationId: createRequest
+      parameters:
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: User ID from JWT token
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MaintenanceRequestDTO"
+            example:
+              title: "Điều hòa hỏng không lạnh"
+              description: "Điều hòa phòng ngủ không lạnh, có tiếng ồn lớn"
+              location: "Căn hộ A-101, Tầng 1, Tòa A"
+              imageBase64: "/9j/4AAQSkZJRgABAQEAYABgAAD..."
+      responses:
+        "200":
+          description: Request created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaintenanceResponseDTO"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+
+  /api/maintenance/{id}:
+    get:
+      tags:
+        - Maintenance Requests
+      summary: Get request by ID
+      description: Retrieve maintenance request details
+      operationId: getRequestById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Request ID
+          example: 1
+      responses:
+        "200":
+          description: Request found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaintenanceResponseDTO"
+        "404":
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+    delete:
+      tags:
+        - Maintenance Requests
+      summary: Delete request
+      description: Delete maintenance request
+      operationId: deleteRequest
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Request ID
+          example: 1
+      responses:
+        "200":
+          description: Request deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "404":
+          description: Request not found
+
+  /api/maintenance/user/{userId}:
+    get:
+      tags:
+        - Maintenance Requests
+      summary: Get user requests
+      description: Get all maintenance requests for a user
+      operationId: getUserRequests
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: User ID
+          example: 1
+      responses:
+        "200":
+          description: Requests found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MaintenanceResponseDTO"
+
+  /api/maintenance/{id}/assign:
+    put:
+      tags:
+        - Assignment
+      summary: Assign technician
+      description: Assign technician to maintenance request (Admin/Technician only)
+      operationId: assignTechnician
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Request ID
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MaintenanceAssignmentDTO"
+            example:
+              technicianId: 5
+              estimatedCost: 500000.00
+              notes: "Cần thay gas điều hòa"
+      responses:
+        "200":
+          description: Assigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaintenanceResponseDTO"
+        "403":
+          description: Forbidden
+
+  /api/maintenance/{id}/status:
+    put:
+      tags:
+        - Maintenance Requests
+      summary: Update status
+      description: Update maintenance request status
+      operationId: updateStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Request ID
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusUpdateDTO"
+            example:
+              status: "IN_PROGRESS"
+              notes: "Đang kiểm tra điều hòa"
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaintenanceResponseDTO"
+
+  /api/maintenance/categories:
+    get:
+      tags:
+        - Reference Data
+      summary: Get categories
+      description: Get all maintenance categories
+      operationId: getCategories
+      security: []
+      responses:
+        "200":
+          description: Categories list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CategoryDTO"
+              example:
+                - id: 1
+                  name: "AIR_CONDITIONING"
+                  displayName: "Điều hòa"
+                - id: 2
+                  name: "PLUMBING"
+                  displayName: "Ống nước"
+                - id: 3
+                  name: "ELECTRICAL"
+                  displayName: "Điện"
+
+  /api/maintenance/technicians:
+    get:
+      tags:
+        - Reference Data
+      summary: Get technicians
+      description: Get all available technicians
+      operationId: getTechnicians
+      responses:
+        "200":
+          description: Technicians list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TechnicianDTO"
+              example:
+                - id: 5
+                  fullName: "Trần Văn Bình"
+                  phoneNumber: "0909123456"
+                  specialization: "AIR_CONDITIONING"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from User Service
+
+  schemas:
+    MaintenanceRequestDTO:
+      type: object
+      required:
+        - title
+        - description
+        - location
+      properties:
+        title:
+          type: string
+          description: Request title
+          example: "Điều hòa hỏng không lạnh"
+        description:
+          type: string
+          description: Detailed description
+          example: "Điều hòa phòng ngủ không lạnh, có tiếng ồn lớn"
+        location:
+          type: string
+          description: Location
+          example: "Căn hộ A-101, Tầng 1, Tòa A"
+        imageBase64:
+          type: string
+          format: byte
+          description: Image in Base64 (uploaded to AWS S3)
+          example: "/9j/4AAQSkZJRgABAQEAYABgAAD..."
+
+    MaintenanceResponseDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        userId:
+          type: integer
+          format: int64
+          example: 1
+        userName:
+          type: string
+          example: "Nguyễn Văn An"
+        title:
+          type: string
+          example: "Điều hòa hỏng không lạnh"
+        description:
+          type: string
+          example: "Điều hòa phòng ngủ không lạnh, có tiếng ồn lớn"
+        category:
+          type: string
+          enum:
+            [
+              AIR_CONDITIONING,
+              PLUMBING,
+              ELECTRICAL,
+              ELEVATOR,
+              FIRE_SAFETY,
+              CLEANING,
+              OTHER,
+            ]
+          example: "AIR_CONDITIONING"
+        priority:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, URGENT]
+          example: "HIGH"
+        status:
+          type: string
+          enum: [PENDING, ASSIGNED, IN_PROGRESS, COMPLETED, CANCELLED]
+          example: "PENDING"
+        location:
+          type: string
+          example: "Căn hộ A-101, Tầng 1, Tòa A"
+        imageUrl:
+          type: string
+          description: AWS S3 URL
+          example: "https://s3.amazonaws.com/bucket/images/123.jpg"
+        technicianId:
+          type: integer
+          format: int64
+          nullable: true
+          example: 5
+        technicianName:
+          type: string
+          nullable: true
+          example: "Trần Văn Bình"
+        estimatedCost:
+          type: number
+          format: double
+          nullable: true
+          example: 500000.00
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T11:00:00"
+
+    MaintenanceAssignmentDTO:
+      type: object
+      required:
+        - technicianId
+      properties:
+        technicianId:
+          type: integer
+          format: int64
+          description: Technician ID
+          example: 5
+        estimatedCost:
+          type: number
+          format: double
+          description: Estimated repair cost
+          example: 500000.00
+        notes:
+          type: string
+          description: Assignment notes
+          example: "Cần thay gas điều hòa"
+
+    StatusUpdateDTO:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [PENDING, ASSIGNED, IN_PROGRESS, COMPLETED, CANCELLED]
+          description: New status
+          example: "IN_PROGRESS"
+        notes:
+          type: string
+          description: Status update notes
+          example: "Đang kiểm tra điều hòa"
+
+    CategoryDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          enum:
+            [
+              AIR_CONDITIONING,
+              PLUMBING,
+              ELECTRICAL,
+              ELEVATOR,
+              FIRE_SAFETY,
+              CLEANING,
+              OTHER,
+            ]
+          example: "AIR_CONDITIONING"
+        displayName:
+          type: string
+          example: "Điều hòa"
+
+    TechnicianDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 5
+        fullName:
+          type: string
+          example: "Trần Văn Bình"
+        phoneNumber:
+          type: string
+          example: "0909123456"
+        specialization:
+          type: string
+          enum:
+            [
+              AIR_CONDITIONING,
+              PLUMBING,
+              ELECTRICAL,
+              ELEVATOR,
+              FIRE_SAFETY,
+              CLEANING,
+              OTHER,
+            ]
+          example: "AIR_CONDITIONING"
+
+    ApiResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Operation successful"
+        success:
+          type: boolean
+          example: true
