@@ -35,22 +35,21 @@ public class AlertService {
         this.restTemplate = new RestTemplate();
     }
 
-        public void info(String title, String message) {
+    public void info(String title, String message) {
         sendAlert(AlertLevel.INFO, title, message);
     }
 
-        public void warning(String title, String message) {
+    public void warning(String title, String message) {
         sendAlert(AlertLevel.WARNING, title, message);
     }
 
-        public void critical(String title, String message) {
+    public void critical(String title, String message) {
         sendAlert(AlertLevel.CRITICAL, title, message);
     }
 
-        private void sendAlert(AlertLevel level, String title, String message) {
+    private void sendAlert(AlertLevel level, String title, String message) {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         String emoji = getEmojiForLevel(level);
-        
         
         String logMessage = String.format("[%s] %s %s - %s", timestamp, emoji, title, message);
         switch (level) {
@@ -59,18 +58,16 @@ public class AlertService {
             case CRITICAL -> log.error(logMessage);
         }
         
-        
         if (slackEnabled && !slackWebhookUrl.isEmpty()) {
             sendSlackAlert(level, title, message, timestamp);
         }
-        
         
         if (emailEnabled && level == AlertLevel.CRITICAL && !emailRecipients.isEmpty()) {
             sendEmailAlert(title, message, timestamp);
         }
     }
 
-        private void sendSlackAlert(AlertLevel level, String title, String message, String timestamp) {
+    private void sendSlackAlert(AlertLevel level, String title, String message, String timestamp) {
         try {
             String color = getColorForLevel(level);
             String emoji = getEmojiForLevel(level);
@@ -101,23 +98,23 @@ public class AlertService {
         }
     }
 
-        private void sendEmailAlert(String title, String message, String timestamp) ách 
+    private void sendEmailAlert(String title, String message, String timestamp) {
         log.info("Email alert would be sent to: {} - {}", emailRecipients, title);
     }
 
-        private String getEmojiForLevel(AlertLevel level) {
+    private String getEmojiForLevel(AlertLevel level) {
         return switch (level) {
-            case INFO -> "i";
-            case WARNING -> "!";
-            case CRITICAL -> "X";
+            case INFO -> "ℹ️";
+            case WARNING -> "⚠️";
+            case CRITICAL -> "❌";
         };
     }
 
-        private String getColorForLevel(AlertLevel level) {
+    private String getColorForLevel(AlertLevel level) {
         return switch (level) {
-            case INFO -> "#36a64f";      
-            case WARNING -> "#ff9900";   
-            case CRITICAL -> "#d00000";  
+            case INFO -> "#36a64f";
+            case WARNING -> "#ff9900";
+            case CRITICAL -> "#d00000";
         };
     }
 

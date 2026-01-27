@@ -49,7 +49,7 @@ public class ShadowModeFilter extends AbstractGatewayFilterFactory<ShadowModeFil
     @Value("${platform.shadow-mode.alert-on-mismatch:false}")
     private boolean alertOnMismatch;
 
-    @Value("${platform.identity-service.url:http:
+    @Value("${platform.identity-service.url:http://localhost:8081}")
     private String identityServiceUrl;
 
     public ShadowModeFilter(WebClient.Builder webClientBuilder) {

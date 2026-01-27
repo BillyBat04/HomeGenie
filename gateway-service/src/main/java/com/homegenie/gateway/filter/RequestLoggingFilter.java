@@ -26,22 +26,21 @@ public class RequestLoggingFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         
-        // Generate or extract request ID
+        
         String requestIdHeader = request.getHeaders().getFirst(REQUEST_ID_HEADER);
         final String requestId = (requestIdHeader == null || requestIdHeader.isBlank()) 
             ? UUID.randomUUID().toString() 
             : requestIdHeader;
         
-        // Add request ID to response headers
+       
         exchange.getResponse().getHeaders().add(REQUEST_ID_HEADER, requestId);
         
-        // Store start time
+       
         exchange.getAttributes().put(REQUEST_START_TIME, Instant.now());
         
-        // Extract client IP (X-Forwarded-For aware)
+      
         String clientIp = getClientIp(request);
         
-        // Log request
         log.info("→ Request [{}] {} {} from {} - User-Agent: {}", 
             requestId,
             request.getMethod(),
@@ -49,7 +48,7 @@ public class RequestLoggingFilter implements GlobalFilter, Ordered {
             clientIp,
             request.getHeaders().getFirst("User-Agent"));
         
-        // Continue filter chain and log response
+      
         return chain.filter(exchange)
             .doFinally(signalType -> {
                 ServerHttpResponse response = exchange.getResponse();
@@ -66,7 +65,7 @@ public class RequestLoggingFilter implements GlobalFilter, Ordered {
                     response.getStatusCode(),
                     duration);
                 
-                // Warn on slow requests (> 1000ms)
+                
                 if (duration > 1000) {
                     log.warn("⚠ Slow request detected [{}] - {}ms", requestId, duration);
                 }
@@ -79,16 +78,11 @@ public class RequestLoggingFilter implements GlobalFilter, Ordered {
                     error.getMessage());
             });
     }
-    
-    *
-     * Extract real client IP from X-Forwarded-For header
-     * Falls back to remote address if header not present
-     */
+
     private String getClientIp(ServerHttpRequest request) {
         String xff = request.getHeaders().getFirst("X-Forwarded-For");
         if (xff != null && !xff.isBlank()) {
-            // X-Forwarded-For: client, proxy1, proxy2
-            // Take first IP (original client)
+            
             return xff.split(",")[0].trim();
         }
         
@@ -99,9 +93,7 @@ public class RequestLoggingFilter implements GlobalFilter, Ordered {
         return "unknown";
     }
     
-    *
-     * Run this filter first (before routing)
-     */
+
     @Override
     public int getOrder() {
         return Ordered.HIGHEST_PRECEDENCE;
