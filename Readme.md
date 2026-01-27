@@ -176,51 +176,6 @@ Start-Process "http://localhost:3000"  # Login: admin/admin
 | **Kafka UI** | <http://localhost:8090> | - |
 | **PgAdmin** | <http://localhost:5050> | <admin@homegenie.com>/admin |
 
-📖 **Detailed Setup**: [docs/DEPLOYMENT-GUIDE.md](docs/DEPLOYMENT-GUIDE.md)
-
----
-
----
-
-## 📚 Documentation
-
-### 🎯 Core Documentation (Updated January 2026)
-
-> **All documentation is based on actual codebase analysis and reflects current implementation**
-
-| Document | Description | Lines | Last Updated |
-|----------|-------------|-------|--------------|
-| **[SYSTEM-ARCHITECTURE.md](docs/SYSTEM-ARCHITECTURE.md)** | C4 diagrams, service catalog, tech stack, data flows, deployment architecture | 500+ | Jan 2026 |
-| **[BUSINESS-PROCESSES.md](docs/BUSINESS-PROCESSES.md)** | User journeys, maintenance lifecycle, payment saga, notification pipeline | 700+ | Jan 2026 |
-| **[API-REFERENCE.md](docs/API-REFERENCE.md)** | Complete API documentation for all 5 services with request/response schemas | 600+ | Jan 2026 |
-| **[DATABASE-SCHEMA.md](docs/DATABASE-SCHEMA.md)** | ER diagrams, 7 tables, indexes, Flyway migrations, query optimization | 700+ | Jan 2026 |
-| **[INTEGRATION-GUIDE.md](docs/INTEGRATION-GUIDE.md)** | Stripe, Kafka, Email/SMS, AI, S3, service communication, troubleshooting | 1000+ | Jan 2026 |
-| **[DEPLOYMENT-GUIDE.md](docs/DEPLOYMENT-GUIDE.md)** | Docker Compose, Production (AWS ECS/K8s), environment variables, health checks | 1300+ | Jan 2026 |
-| **[BUSINESS-RULES.md](docs/BUSINESS-RULES.md)** | 50+ business rules across 10 categories with enforcement mechanisms | 1000+ | Jan 2026 |
-
-### 📖 Additional Resources
-
-| Category | Documents |
-|----------|-----------|
-| **Getting Started** | [QUICK-START.md](QUICK-START.md), [SETUP-ENVIRONMENT.md](docs/SETUP-ENVIRONMENT.md) |
-| **Testing** | [TESTING-GUIDE.md](TESTING-GUIDE.md), [E2E-TESTING-MANUAL-GUIDE.md](E2E-TESTING-MANUAL-GUIDE.md) |
-| **API Testing** | [docs/api/TESTING_GUIDE.md](docs/api/TESTING_GUIDE.md), [Postman Collection](docs/api/HomeGenie-API-Collection.postman_collection.json) |
-| **OpenAPI Specs** | [User Service](docs/api/user-service-openapi.yaml), [Maintenance](docs/api/maintenance-service-openapi.yaml), [Payment](docs/api/payment-service-openapi.yaml), [Notification](docs/api/notification-service-openapi.yaml) |
-| **Monitoring** | [MONITORING-IMPLEMENTATION-REPORT.md](docs/MONITORING-IMPLEMENTATION-REPORT.md), [Grafana Dashboards](grafana/provisioning/dashboards/) |
-| **Sprint Reports** | [SPRINT-1-COMPLETION.md](docs/SPRINT-1-COMPLETION.md), [SPRINT-2-COMPLETION.md](docs/SPRINT-2-COMPLETION.md), [SPRINT3-Completion.md](docs/SPRINT3-Completion.md) |
-
-### 🔍 Documentation Quick Links
-
-- **Architecture Overview**: [SYSTEM-ARCHITECTURE.md](docs/SYSTEM-ARCHITECTURE.md) → C4 Context/Container/Component diagrams
-- **Business Logic**: [BUSINESS-PROCESSES.md](docs/BUSINESS-PROCESSES.md) → Complete user journeys with flow diagrams
-- **API Contracts**: [API-REFERENCE.md](docs/API-REFERENCE.md) → All endpoints with auth, validation, error handling
-- **Data Model**: [DATABASE-SCHEMA.md](docs/DATABASE-SCHEMA.md) → ER diagrams, table schemas, indexes
-- **External Integrations**: [INTEGRATION-GUIDE.md](docs/INTEGRATION-GUIDE.md) → Stripe, Kafka, Email/SMS, AI, S3
-- **Deployment**: [DEPLOYMENT-GUIDE.md](docs/DEPLOYMENT-GUIDE.md) → Local dev, Docker, AWS ECS, Kubernetes
-- **Business Rules**: [BUSINESS-RULES.md](docs/BUSINESS-RULES.md) → Payment validation, status transitions, rate limiting
-
----
-
 ## 🛠️ Technology Stack
 
 ### Backend Services
@@ -478,24 +433,6 @@ Access Grafana at <http://localhost:3000> (admin/admin)
 
 ---
 
-## 🤝 Contributing
-
-We welcome contributions! Please follow these guidelines:
-
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Commit your changes**: `git commit -m 'Add amazing feature'`
-4. **Push to the branch**: `git push origin feature/amazing-feature`
-5. **Open a Pull Request**
-
-### Development Workflow
-
-1. Read [SYSTEM-ARCHITECTURE.md](docs/SYSTEM-ARCHITECTURE.md) to understand the architecture
-2. Check [BUSINESS-RULES.md](docs/BUSINESS-RULES.md) for business logic requirements
-3. Write tests following [TESTING-GUIDE.md](TESTING-GUIDE.md)
-4. Ensure all tests pass: `mvn verify`
-5. Update documentation if needed
-
 ---
 
 ## 📄 License
@@ -514,11 +451,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 📞 Support
-
-- **Documentation**: [docs/](docs/)
-- **Issues**: [GitHub Issues](https://github.com/your-org/homegenie/issues)
-- **Email**: <support@homegenie.com>
 
 ---
 
