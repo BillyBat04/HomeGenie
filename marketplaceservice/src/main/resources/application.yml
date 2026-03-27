@@ -38,6 +38,18 @@ spring:
       properties:
         spring.json.add.type.headers: false
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt: {}
+          # Marketplace service validates HS256 tokens via a programmatic JwtDecoder bean
+          # (see SecurityConfig). The same JWT_SECRET env var must be set here as in user-service.
+          # The jwk-set-uri / issuer-uri auto-config is intentionally NOT used for HMAC keys.
+
+# JWT shared secret (same env var as user-service)
+jwt:
+  secret: ${JWT_SECRET}
+
 server:
   port: 8085
   error:
@@ -71,13 +83,13 @@ springdoc:
 # External Service URLs
 external-services:
   payment-service:
-    url: http://localhost:8083
-    timeout: 30000
+    url: ${PAYMENT_SERVICE_URL:http://payment-service:8083}
+    timeout: 10000
   notification-service:
-    url: http://localhost:8084
+    url: ${NOTIFICATION_SERVICE_URL:http://notification-service:8084}
     timeout: 10000
   user-service:
-    url: http://localhost:8081
+    url: ${USER_SERVICE_URL:http://user-service:8081}
     timeout: 10000
 
 # Mini-App Configuration

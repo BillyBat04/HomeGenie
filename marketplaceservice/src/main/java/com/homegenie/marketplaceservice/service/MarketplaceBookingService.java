@@ -101,6 +101,11 @@ public class MarketplaceBookingService {
                 .build();
         
         MarketplaceBooking saved = bookingRepository.save(booking);
+
+        // Track total bookings per provider as soon as booking is created (not when completed).
+        // completedBookings is incremented separately in completeBooking().
+        provider.setTotalBookings(provider.getTotalBookings() + 1);
+        providerRepository.save(provider);
         
         log.info("Booking created successfully: id={}, status={}", saved.getId(), saved.getStatus());
         
@@ -130,7 +135,11 @@ public class MarketplaceBookingService {
         if (booking.getStatus() != BookingStatus.PENDING) {
             throw new IllegalStateException("Booking cannot be confirmed in current status: " + booking.getStatus());
         }
-        
+
+        // Verify payment is genuinely successful before confirming.
+        // Without this check anyone can pass a random paymentId to confirm for free.
+        verifyPaymentSuccess(paymentId, bookingId);
+
         booking.confirm(paymentId);
         MarketplaceBooking saved = bookingRepository.save(booking);
         
@@ -190,7 +199,7 @@ public class MarketplaceBookingService {
         MarketplaceProvider provider = providerRepository.findById(booking.getProviderId())
                 .orElseThrow(() -> new IllegalArgumentException("Provider not found"));
         provider.setCompletedBookings(provider.getCompletedBookings() + 1);
-        provider.setTotalBookings(provider.getTotalBookings() + 1);
+        // totalBookings already incremented in createBooking() — do NOT increment again here.
         providerRepository.save(provider);
         
         log.info("Booking completed successfully: id={}", saved.getId());
@@ -218,6 +227,11 @@ public class MarketplaceBookingService {
                 .orElseThrow(() -> new IllegalArgumentException("Booking not found: " + bookingId));
         
         booking.cancel(cancellationReason);
+        // BUG FIX: if customer already paid, automatically mark for refund.
+        // Previously this was never called, leaving PAID bookings stuck in CANCELLED status.
+        if (booking.getPaymentStatus() == PaymentStatus.PAID) {
+            booking.refund();
+        }
         MarketplaceBooking saved = bookingRepository.save(booking);
         
         log.info("Booking cancelled successfully: id={}", saved.getId());
@@ -272,7 +286,38 @@ public class MarketplaceBookingService {
     // ============================================================
     // Private Helper Methods
     // ============================================================
-    
+    /**
+     * Call Payment Service to verify a payment is genuinely SUCCESS before confirming a booking.
+     * Throws IllegalStateException if payment cannot be verified.
+     */
+    private void verifyPaymentSuccess(Long paymentId, Long bookingId) {
+        try {
+            String url = paymentServiceUrl + "/api/payments/" + paymentId;
+            PaymentVerificationDTO payment = restTemplate.getForObject(url, PaymentVerificationDTO.class);
+
+            if (payment == null) {
+                throw new IllegalStateException("Payment " + paymentId + " not found in Payment Service");
+            }
+            if (!"SUCCESS".equalsIgnoreCase(payment.getStatus()) && !"PAID".equalsIgnoreCase(payment.getStatus())) {
+                throw new IllegalStateException(
+                    "Payment " + paymentId + " is not successful (status=" + payment.getStatus() + ")");
+            }
+            // Extra safety: make sure this payment belongs to this booking
+            if (payment.getOrderId() != null && !payment.getOrderId().equals(bookingId)) {
+                throw new IllegalStateException(
+                    "Payment " + paymentId + " does not belong to booking " + bookingId);
+            }
+            log.info("Payment {} verified successfully for booking {}", paymentId, bookingId);
+        } catch (IllegalStateException e) {
+            throw e; // re-throw our own validation errors as-is
+        } catch (Exception e) {
+            // Payment Service is down or unreachable — fail closed (safe default: don't confirm without verification)
+            log.error("Could not verify payment {} with Payment Service: {}", paymentId, e.getMessage());
+            throw new IllegalStateException(
+                "Unable to verify payment " + paymentId + ". Please try again later.");
+        }
+    }
+
     /**
      * Publish booking event to Kafka
      */

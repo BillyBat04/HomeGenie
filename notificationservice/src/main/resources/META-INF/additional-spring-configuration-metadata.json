@@ -1,0 +1,42 @@
+{
+  "groups": [
+    { "name": "email", "description": "Email provider configuration." },
+    { "name": "aws", "description": "AWS credentials and region." },
+    { "name": "aws.ses", "description": "AWS SES (Simple Email Service) settings." },
+    { "name": "aws.sns", "description": "AWS SNS (Simple Notification Service) settings." },
+    { "name": "services", "description": "Downstream service URLs." },
+    { "name": "services.user-service" },
+    { "name": "services.maintenance-service" },
+    { "name": "services.payment-service" },
+    { "name": "notification", "description": "Notification retry, batching and retention settings." },
+    { "name": "notification.retry" },
+    { "name": "notification.batch" },
+    { "name": "notification.retention" },
+    { "name": "kafka", "description": "Custom Kafka topic names." },
+    { "name": "kafka.topics" }
+  ],
+  "properties": [
+    { "name": "email.provider", "type": "java.lang.String" },
+    { "name": "email.from", "type": "java.lang.String" },
+    { "name": "aws.access-key", "type": "java.lang.String" },
+    { "name": "aws.secret-key", "type": "java.lang.String" },
+    { "name": "aws.region", "type": "java.lang.String" },
+    { "name": "aws.ses.from-email", "type": "java.lang.String" },
+    { "name": "aws.sns.enabled", "type": "java.lang.Boolean" },
+    { "name": "services.user-service.url", "type": "java.lang.String" },
+    { "name": "services.maintenance-service.url", "type": "java.lang.String" },
+    { "name": "services.payment-service.url", "type": "java.lang.String" },
+    { "name": "notification.retry.max-attempts", "type": "java.lang.Integer" },
+    { "name": "notification.retry.delay-ms", "type": "java.lang.Long" },
+    { "name": "notification.batch.size", "type": "java.lang.Integer" },
+    { "name": "notification.batch.interval-ms", "type": "java.lang.Long" },
+    { "name": "notification.retention.days", "type": "java.lang.Integer" },
+    { "name": "kafka.topics.payment-events", "type": "java.lang.String" },
+    { "name": "kafka.topics.invoice-events", "type": "java.lang.String" },
+    { "name": "kafka.topics.maintenance-events", "type": "java.lang.String" },
+    { "name": "kafka.topics.user-events", "type": "java.lang.String" },
+    { "name": "kafka.topics.notification-events", "type": "java.lang.String" },
+    { "name": "kafka.topics.maintenance-reminder", "type": "java.lang.String" },
+    { "name": "kafka.topics.warranty-reminder", "type": "java.lang.String" }
+  ]
+}

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Publishes payment lifecycle events to Kafka so notification-service
@@ -60,13 +61,15 @@ public class PaymentEventPublisher {
             event.put("eventTime", LocalDateTime.now().toString());
 
             String partitionKey = payment.getUserId().toString();
+            String topic = Objects.requireNonNull(paymentEventsTopic, "paymentEventsTopic");
+            String key = Objects.requireNonNull(partitionKey, "partitionKey");
             log.info("📤 Publishing {}: paymentId={}, userId={}", eventType, payment.getId(), payment.getUserId());
-            kafkaTemplate.send(paymentEventsTopic, partitionKey, event);
-            log.info("✅ {} published successfully", eventType);
+            kafkaTemplate.send(topic, key, event);
+            log.info(" {} published successfully", eventType);
         } catch (Exception e) {
             // Log but do not throw — a Kafka failure must NOT roll back an already-committed Stripe payment.
             // The notification is best-effort; the payment itself was successful.
-            log.error("❌ Failed to publish {}: {}. Payment {} was already committed — no rollback.", 
+            log.error(" Failed to publish {}: {}. Payment {} was already committed — no rollback.", 
                     eventType, e.getMessage(), payment.getId());
         }
     }

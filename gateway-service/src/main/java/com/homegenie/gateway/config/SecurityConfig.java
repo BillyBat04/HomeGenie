@@ -27,10 +27,10 @@ import org.springframework.security.web.server.util.matcher.ServerWebExchangeMat
 @EnableWebFluxSecurity
 public class SecurityConfig {
     
-    @Value("${management.actuator.username:admin}")
+    @Value("${gateway.actuator.username:admin}")
     private String actuatorUsername;
     
-    @Value("${management.actuator.password:changeme}")
+    @Value("${gateway.actuator.password:changeme}")
     private String actuatorPassword;
     
     /**

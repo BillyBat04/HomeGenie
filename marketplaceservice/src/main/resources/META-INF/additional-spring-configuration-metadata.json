@@ -1,0 +1,21 @@
+{
+  "groups": [
+    { "name": "jwt", "description": "JWT configuration shared with user-service." },
+    { "name": "external-services", "description": "URLs and timeouts for downstream services." },
+    { "name": "external-services.payment-service" },
+    { "name": "external-services.notification-service" },
+    { "name": "external-services.user-service" },
+    { "name": "marketplace", "description": "Marketplace mini-app configuration." }
+  ],
+  "properties": [
+    { "name": "jwt.secret", "type": "java.lang.String", "description": "HMAC-SHA256 signing secret (same as user-service JWT_SECRET)." },
+    { "name": "external-services.payment-service.url", "type": "java.lang.String" },
+    { "name": "external-services.payment-service.timeout", "type": "java.lang.Integer" },
+    { "name": "external-services.notification-service.url", "type": "java.lang.String" },
+    { "name": "external-services.notification-service.timeout", "type": "java.lang.Integer" },
+    { "name": "external-services.user-service.url", "type": "java.lang.String" },
+    { "name": "external-services.user-service.timeout", "type": "java.lang.Integer" },
+    { "name": "marketplace.mini-app-id", "type": "java.lang.String" },
+    { "name": "marketplace.commission-rate", "type": "java.math.BigDecimal" }
+  ]
+}
