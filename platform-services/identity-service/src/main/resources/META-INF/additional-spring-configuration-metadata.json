@@ -1,0 +1,24 @@
+{
+  "groups": [
+    { "name": "jwt", "description": "JWT configuration (must match user-service)." },
+    { "name": "platform", "description": "Platform feature flags." },
+    { "name": "platform.identity" },
+    { "name": "platform.feature-flags" },
+    { "name": "platform.feature-flags.shadow-mode" },
+    { "name": "platform.feature-flags.traffic-split" },
+    { "name": "platform.feature-flags.auto-rollback" }
+  ],
+  "properties": [
+    { "name": "jwt.secret", "type": "java.lang.String" },
+    { "name": "jwt.access-token-expiration", "type": "java.lang.Long" },
+    { "name": "jwt.refresh-token-expiration", "type": "java.lang.Long" },
+    { "name": "platform.identity.enabled", "type": "java.lang.Boolean" },
+    { "name": "platform.identity.version", "type": "java.lang.String" },
+    { "name": "platform.feature-flags.shadow-mode.enabled", "type": "java.lang.Boolean" },
+    { "name": "platform.feature-flags.traffic-split.enabled", "type": "java.lang.Boolean" },
+    { "name": "platform.feature-flags.traffic-split.percentage", "type": "java.lang.Integer" },
+    { "name": "platform.feature-flags.auto-rollback.enabled", "type": "java.lang.Boolean" },
+    { "name": "platform.feature-flags.auto-rollback.error-rate-threshold", "type": "java.lang.Double" },
+    { "name": "platform.feature-flags.auto-rollback.response-time-threshold", "type": "java.lang.Integer" }
+  ]
+}

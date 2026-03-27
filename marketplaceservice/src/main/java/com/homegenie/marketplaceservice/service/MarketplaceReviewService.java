@@ -4,6 +4,7 @@ import com.homegenie.marketplaceservice.dto.CreateReviewRequest;
 import com.homegenie.marketplaceservice.dto.ReviewResponseDTO;
 import com.homegenie.marketplaceservice.event.ReviewEvent;
 import com.homegenie.marketplaceservice.exception.DuplicateReviewException;
+import com.homegenie.marketplaceservice.exception.UnauthorizedException;
 import com.homegenie.marketplaceservice.model.MarketplaceBooking;
 import com.homegenie.marketplaceservice.model.MarketplaceProvider;
 import com.homegenie.marketplaceservice.model.MarketplaceReview;
@@ -15,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,6 +64,24 @@ public class MarketplaceReviewService {
             if (!booking.canRate()) {
                 throw new IllegalStateException("Booking must be completed before rating: " + booking.getStatus());
             }
+
+            // Verify the authenticated user actually owns this booking.
+            // user-service sets sub = email; the numeric userId is in the custom "userId" claim.
+            JwtAuthenticationToken jwtToken =
+                    (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+            Long currentUserId;
+            try {
+                Number userIdClaim = jwtToken.getToken().getClaim("userId");
+                if (userIdClaim == null) {
+                    throw new UnauthorizedException("JWT is missing required 'userId' claim");
+                }
+                currentUserId = userIdClaim.longValue();
+            } catch (ClassCastException e) {
+                throw new UnauthorizedException("Invalid 'userId' claim type in JWT");
+            }
+            if (!booking.getUserId().equals(currentUserId)) {
+                throw new IllegalArgumentException("User " + currentUserId + " did not make this booking");
+            }
             
             // 2. Check if review already exists
             if (reviewRepository.existsByBookingId(request.getBookingId())) {
@@ -69,10 +90,10 @@ public class MarketplaceReviewService {
                 );
             }
             
-            // 3. Create review entity
+            // 3. Create review entity — userId taken from JWT principal, not request body
             MarketplaceReview review = MarketplaceReview.builder()
                     .bookingId(request.getBookingId())
-                    .userId(request.getUserId())
+                    .userId(currentUserId)
                     .providerId(request.getProviderId())
                     .rating(request.getRating())
                     .title(request.getTitle())

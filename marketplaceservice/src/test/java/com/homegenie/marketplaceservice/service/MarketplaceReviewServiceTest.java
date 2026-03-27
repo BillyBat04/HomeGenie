@@ -3,8 +3,10 @@ package com.homegenie.marketplaceservice.service;
 import com.homegenie.marketplaceservice.dto.CreateReviewRequest;
 import com.homegenie.marketplaceservice.dto.ReviewResponseDTO;
 import com.homegenie.marketplaceservice.event.ReviewEvent;
+import com.homegenie.marketplaceservice.exception.DuplicateReviewException;
 import com.homegenie.marketplaceservice.model.*;
 import com.homegenie.marketplaceservice.repository.*;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,10 +15,16 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -50,6 +58,27 @@ class MarketplaceReviewServiceTest {
     private MarketplaceBooking testBooking;
     private MarketplaceProvider testProvider;
     private MarketplaceReview testReview;
+
+    /** Build a JwtAuthenticationToken whose 'userId' claim matches testBooking.userId. */
+    private void setAuthenticatedUser(Long userId) {
+        Jwt jwt = Jwt.withTokenValue("test-token")
+                .header("alg", "HS256")
+                .subject("test@example.com")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .claim("userId", userId)
+                .claim("role", "USER")
+                .build();
+        JwtAuthenticationToken auth = new JwtAuthenticationToken(jwt, Collections.emptyList());
+        SecurityContext ctx = SecurityContextHolder.createEmptyContext();
+        ctx.setAuthentication(auth);
+        SecurityContextHolder.setContext(ctx);
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
     
     @BeforeEach
     void setUp() {
@@ -87,6 +116,8 @@ class MarketplaceReviewServiceTest {
                 .build();
         
         ReflectionTestUtils.setField(reviewService, "miniAppId", "marketplace");
+        // Default: act as user 100 (matches testBooking.userId)
+        setAuthenticatedUser(100L);
     }
     
     @Test
@@ -170,12 +201,12 @@ class MarketplaceReviewServiceTest {
         when(reviewRepository.existsByBookingId(1L)).thenReturn(true);
         
         // When & Then
-        IllegalStateException exception = assertThrows(
-                IllegalStateException.class,
+        // BUG FIX: service throws DuplicateReviewException, not IllegalStateException
+        assertThrows(
+                DuplicateReviewException.class,
                 () -> reviewService.createReview(request)
         );
         
-        assertEquals("Review already exists for this booking", exception.getMessage());
         verify(reviewRepository, never()).save(any());
     }
     

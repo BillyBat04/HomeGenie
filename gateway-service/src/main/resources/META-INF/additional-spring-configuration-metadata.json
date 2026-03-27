@@ -1,0 +1,27 @@
+{
+  "groups": [
+    { "name": "gateway", "description": "HomeGenie gateway configuration (public routes, per-mini-app settings)." },
+    { "name": "gateway.public-routes", "description": "Paths that bypass JWT authentication." },
+    { "name": "gateway.actuator", "description": "HTTP-Basic credentials protecting Actuator endpoints." },
+    { "name": "jwt", "description": "JWT configuration (must match user-service)." },
+    { "name": "platform", "description": "Shadow mode and traffic-split feature flags." },
+    { "name": "platform.shadow-mode" },
+    { "name": "platform.traffic-split" },
+    { "name": "platform.auto-rollback" },
+    { "name": "platform.identity-service" },
+    { "name": "platform.user-service" },
+    { "name": "mini-apps", "description": "Mini-app registry (id, display name, enabled flag)." }
+  ],
+  "properties": [
+    { "name": "gateway.actuator.username", "type": "java.lang.String", "description": "HTTP-Basic username for /actuator endpoints." },
+    { "name": "gateway.actuator.password", "type": "java.lang.String", "description": "HTTP-Basic password for /actuator endpoints." },
+    { "name": "jwt.secret", "type": "java.lang.String" },
+    { "name": "jwt.expiration", "type": "java.lang.Long" },
+    { "name": "platform.shadow-mode.enabled", "type": "java.lang.Boolean" },
+    { "name": "platform.traffic-split.enabled", "type": "java.lang.Boolean" },
+    { "name": "platform.traffic-split.percentage", "type": "java.lang.Integer" },
+    { "name": "platform.auto-rollback.enabled", "type": "java.lang.Boolean" },
+    { "name": "platform.identity-service.url", "type": "java.lang.String" },
+    { "name": "platform.user-service.url", "type": "java.lang.String" }
+  ]
+}

@@ -16,6 +16,11 @@ gateway:
     - /actuator/info
     - /fallback/**
 
+  # HTTP-Basic credentials protecting Actuator endpoints
+  actuator:
+    username: ${ACTUATOR_USERNAME:admin}
+    password: ${ACTUATOR_PASSWORD:}
+
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -262,9 +267,6 @@ resilience4j:
 
 # Actuator Configuration
 management:
-  actuator:
-    username: ${ACTUATOR_USERNAME:admin}
-    password: ${ACTUATOR_PASSWORD:}
   endpoints:
     web:
       exposure:

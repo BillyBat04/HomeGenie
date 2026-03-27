@@ -2,6 +2,7 @@ package com.homegenie.marketplaceservice.service;
 
 import com.homegenie.marketplaceservice.dto.BookingResponseDTO;
 import com.homegenie.marketplaceservice.dto.CreateBookingRequest;
+import com.homegenie.marketplaceservice.dto.PaymentVerificationDTO;
 import com.homegenie.marketplaceservice.event.BookingEvent;
 import com.homegenie.marketplaceservice.model.*;
 import com.homegenie.marketplaceservice.repository.*;
@@ -114,7 +115,9 @@ class MarketplaceBookingServiceTest {
         
         when(serviceRepository.findById(1L)).thenReturn(Optional.of(testService));
         when(providerRepository.findById(1L)).thenReturn(Optional.of(testProvider));
-        when(bookingRepository.save(any(MarketplaceBooking.class))).thenReturn(testBooking);        
+        when(bookingRepository.save(any(MarketplaceBooking.class))).thenReturn(testBooking);
+        // createBooking now increments totalBookings and saves provider
+        when(providerRepository.save(any(MarketplaceProvider.class))).thenReturn(testProvider);        
         
         BookingResponseDTO result = bookingService.createBooking(request);        
         
@@ -203,7 +206,17 @@ class MarketplaceBookingServiceTest {
     void testConfirmBooking_Success() {
         Long bookingId = 1L;
         Long paymentId = 888L;
-        
+
+        // Mock payment verification: return a SUCCESS payment whose orderId matches bookingId
+        PaymentVerificationDTO paymentDTO = new PaymentVerificationDTO();
+        paymentDTO.setId(paymentId);
+        paymentDTO.setOrderId(bookingId);
+        paymentDTO.setStatus("SUCCESS");
+        when(restTemplate.getForObject(
+                contains("/api/payments/" + paymentId),
+                eq(PaymentVerificationDTO.class)
+        )).thenReturn(paymentDTO);
+
         when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(testBooking));
         when(bookingRepository.save(any(MarketplaceBooking.class))).thenAnswer(i -> {
             MarketplaceBooking saved = i.getArgument(0);
@@ -287,9 +300,10 @@ class MarketplaceBookingServiceTest {
         assertEquals(BookingStatus.COMPLETED, result.getStatus());
         assertEquals(BigDecimal.valueOf(150.00), result.getFinalPrice());        
         
-        verify(providerRepository).save(argThat(provider -> 
-            provider.getCompletedBookings() == 1 && 
-            provider.getTotalBookings() == 1
+        // totalBookings is now incremented in createBooking, so completeBooking only increments completedBookings.
+        verify(providerRepository).save(argThat(provider ->
+            provider.getCompletedBookings() == 1 &&
+            provider.getTotalBookings() == 0   // not changed by completeBooking
         ));        
         
         verify(kafkaTemplate).send(eq("marketplace.booking.events"), any(BookingEvent.class));

@@ -1,0 +1,30 @@
+{
+  "groups": [
+    { "name": "stripe", "description": "Stripe payment gateway configuration." },
+    { "name": "user.service", "description": "User service URL." },
+    { "name": "maintenance.service", "description": "Maintenance service URL." },
+    { "name": "payment", "description": "Payment processing limits." },
+    { "name": "payment-platform", "description": "Mini-app commission and feature flags." },
+    { "name": "payment-platform.mini-apps" },
+    { "name": "invoice", "description": "Invoice generation configuration." },
+    { "name": "kafka", "description": "Custom Kafka topic names." },
+    { "name": "kafka.topics" },
+    { "name": "payment-platform", "description": "Mini-app commission configuration." },
+    { "name": "payment-platform.mini-apps" }
+  ],
+  "properties": [
+    { "name": "stripe.api-key", "type": "java.lang.String" },
+    { "name": "stripe.webhook-secret", "type": "java.lang.String" },
+    { "name": "stripe.currency", "type": "java.lang.String" },
+    { "name": "user.service.url", "type": "java.lang.String" },
+    { "name": "maintenance.service.url", "type": "java.lang.String" },
+    { "name": "payment.minimum-amount", "type": "java.lang.Integer" },
+    { "name": "payment.maximum-amount", "type": "java.lang.Integer" },
+    { "name": "payment.auto-capture", "type": "java.lang.Boolean" },
+    { "name": "payment.refund-days", "type": "java.lang.Integer" },
+    { "name": "invoice.prefix", "type": "java.lang.String" },
+    { "name": "invoice.due-days", "type": "java.lang.Integer" },
+    { "name": "invoice.late-fee-percentage", "type": "java.lang.Double" },
+    { "name": "kafka.topics.payment-events", "type": "java.lang.String" }
+  ]
+}

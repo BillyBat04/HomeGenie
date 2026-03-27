@@ -1,8 +1,10 @@
 package com.homegenie.marketplaceservice.service;
 
+import com.homegenie.marketplaceservice.dto.CreateServiceRequest;
 import com.homegenie.marketplaceservice.dto.ServiceSummaryDTO;
 import com.homegenie.marketplaceservice.model.MarketplaceProvider;
 import com.homegenie.marketplaceservice.model.MarketplaceServiceEntity;
+import com.homegenie.marketplaceservice.model.PriceUnit;
 import com.homegenie.marketplaceservice.model.ServiceCategory;
 import com.homegenie.marketplaceservice.model.ServiceStatus;
 import com.homegenie.marketplaceservice.repository.MarketplaceProviderRepository;
@@ -86,20 +88,30 @@ public class MarketplaceServiceCatalogService {
      * Create new service (provider action)
      */
     @Transactional
-    public ServiceSummaryDTO createService(MarketplaceServiceEntity service) {
-        log.info("Creating new service: name={}, providerId={}", service.getName(), service.getProviderId());
-        
-        // Validate provider exists and is active
-        MarketplaceProvider provider = providerRepository.findById(service.getProviderId())
-                .orElseThrow(() -> new IllegalArgumentException("Provider not found: " + service.getProviderId()));
-        
+    public ServiceSummaryDTO createService(CreateServiceRequest request) {
+        log.info("Creating new service: name={}, providerId={}", request.getName(), request.getProviderId());
+
+        MarketplaceProvider provider = providerRepository.findById(request.getProviderId())
+                .orElseThrow(() -> new IllegalArgumentException("Provider not found: " + request.getProviderId()));
+
         if (!provider.canAcceptBookings()) {
             throw new IllegalStateException("Provider cannot offer services: " + provider.getStatus());
         }
-        
+
+        MarketplaceServiceEntity service = MarketplaceServiceEntity.builder()
+                .name(request.getName()).description(request.getDescription())
+                .category(request.getCategory()).providerId(request.getProviderId())
+                .basePrice(request.getBasePrice())
+                .priceUnit(request.getPriceUnit() != null ? request.getPriceUnit() : PriceUnit.PER_JOB)
+                .currency(request.getCurrency() != null ? request.getCurrency() : "USD")
+                .isFeatured(request.getIsFeatured() != null ? request.getIsFeatured() : false)
+                .imageUrl(request.getImageUrl())
+                .durationMinutes(request.getDurationMinutes())
+                .build();
+
         MarketplaceServiceEntity saved = serviceRepository.save(service);
         log.info("Service created successfully: id={}", saved.getId());
-        
+
         return mapToSummaryDTO(saved);
     }
     

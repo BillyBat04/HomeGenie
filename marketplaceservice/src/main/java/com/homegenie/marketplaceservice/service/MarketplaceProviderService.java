@@ -1,5 +1,6 @@
 package com.homegenie.marketplaceservice.service;
 
+import com.homegenie.marketplaceservice.dto.CreateProviderRequest;
 import com.homegenie.marketplaceservice.dto.ProviderSummaryDTO;
 import com.homegenie.marketplaceservice.model.MarketplaceProvider;
 import com.homegenie.marketplaceservice.model.ProviderStatus;
@@ -57,16 +58,22 @@ public class MarketplaceProviderService {
      * Create new provider (admin only)
      */
     @Transactional
-    public ProviderSummaryDTO createProvider(MarketplaceProvider provider) {
-        log.info("Creating new provider: email={}", provider.getEmail());
-        
-        if (providerRepository.existsByEmail(provider.getEmail())) {
-            throw new IllegalArgumentException("Provider email already exists: " + provider.getEmail());
+    public ProviderSummaryDTO createProvider(CreateProviderRequest request) {
+        log.info("Creating new provider: email={}", request.getEmail());
+
+        if (providerRepository.existsByEmail(request.getEmail())) {
+            throw new IllegalArgumentException("Provider email already exists: " + request.getEmail());
         }
-        
+
+        MarketplaceProvider provider = MarketplaceProvider.builder()
+                .name(request.getName()).email(request.getEmail()).phone(request.getPhone())
+                .companyName(request.getCompanyName()).licenseNumber(request.getLicenseNumber())
+                .bio(request.getBio()).profilePhotoUrl(request.getProfilePhotoUrl())
+                .build();
+
         MarketplaceProvider saved = providerRepository.save(provider);
         log.info("Provider created successfully: id={}", saved.getId());
-        
+
         return mapToSummaryDTO(saved);
     }
     

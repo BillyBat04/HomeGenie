@@ -19,6 +19,7 @@ public interface MarketplaceServiceRepository extends JpaRepository<MarketplaceS
     /**
      * Find all services by provider
      */
+    List<MarketplaceServiceEntity> findByStatus(ServiceStatus status);
     List<MarketplaceServiceEntity> findByProviderId(Long providerId);
     
     /**

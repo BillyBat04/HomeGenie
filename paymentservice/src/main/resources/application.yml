@@ -46,6 +46,19 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
+  # Kafka: publish payment lifecycle events so notification-service sends confirmations
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all          # wait for leader + all in-sync replicas before ack
+      retries: 3
+      properties:
+        spring.json.add.type.headers: false
+        enable.idempotence: true     # exactly-once delivery from producer side
+        max.in.flight.requests.per.connection: 1
+
 # Stripe Configuration
 stripe:
   api-key: ${STRIPE_API_KEY:}
@@ -94,20 +107,6 @@ invoice:
   prefix: ${INVOICE_PREFIX:INV}
   due-days: ${INVOICE_DUE_DAYS:7}
   late-fee-percentage: ${INVOICE_LATE_FEE:5.0}
-
-# Kafka: publish payment lifecycle events so notification-service sends confirmations
-spring:
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      acks: all          # wait for leader + all in-sync replicas before ack
-      retries: 3
-      properties:
-        spring.json.add.type.headers: false
-        enable.idempotence: true     # exactly-once delivery from producer side
-        max.in.flight.requests.per.connection: 1
 
 kafka:
   topics:
