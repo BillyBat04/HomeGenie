@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
+@SuppressWarnings("null")
 public class WebClientConfig {
 
     @Value("${voice.service.url}")
@@ -48,8 +49,9 @@ public class WebClientConfig {
         
         org.springframework.http.client.SimpleClientHttpRequestFactory factory = 
             new org.springframework.http.client.SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5000);  // 5 seconds
-        factory.setReadTimeout(30000);    // 30 seconds
+        
+        factory.setConnectTimeout(2000);
+        factory.setReadTimeout(3000);
         
         restTemplate.setRequestFactory(factory);
         return restTemplate;

@@ -1,6 +1,7 @@
+package com.homegenie.userservice.controller;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.homegenie.userservice.dto.LoginRequest;
-import com.homegenie.userservice.dto.RegisterRequest;
 import com.homegenie.userservice.model.User;
 import com.homegenie.userservice.model.UserRole;
 import com.homegenie.userservice.repository.UserRepository;
@@ -25,6 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
+@SuppressWarnings("null")
 public class UserControllerIntegrationTest {
 
     @Autowired

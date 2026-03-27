@@ -1,6 +1,7 @@
 package com.homegenie.maintenanceservice.dto;
 
 import com.homegenie.maintenanceservice.model.Category;
+import com.homegenie.maintenanceservice.model.PaymentStatus;
 import com.homegenie.maintenanceservice.model.Priority;
 import com.homegenie.maintenanceservice.model.Status;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -41,4 +42,7 @@ public class MaintenanceResponseDTO {
     private LocalDateTime resolvedAt;
     @Schema(description = "Admin notes", example = "Assigned to plumber")
     private String adminNotes;
+
+    @Schema(description = "Payment status for COMPLETED requests: PENDING / SUCCESS / FAILED", example = "PENDING")
+    private PaymentStatus paymentStatus;
 }

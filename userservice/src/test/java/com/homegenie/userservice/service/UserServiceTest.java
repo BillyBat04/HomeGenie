@@ -36,6 +36,7 @@ import static org.mockito.Mockito.*;
  * - Event publishing
  */
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("null")
 class UserServiceTest {
 
     @Mock

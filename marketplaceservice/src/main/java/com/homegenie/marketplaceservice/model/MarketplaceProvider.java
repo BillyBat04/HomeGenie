@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 /**
@@ -127,7 +128,7 @@ public class MarketplaceProvider {
             // Weighted average: (old_avg * old_count + new_rating) / new_count
             BigDecimal totalScore = averageRating.multiply(BigDecimal.valueOf(totalReviews));
             totalScore = totalScore.add(newRating);
-            averageRating = totalScore.divide(BigDecimal.valueOf(totalReviews + 1), 2, BigDecimal.ROUND_HALF_UP);
+            averageRating = totalScore.divide(BigDecimal.valueOf(totalReviews + 1), 2, RoundingMode.HALF_UP);
         }
         totalReviews++;
         updatedAt = LocalDateTime.now();

@@ -18,6 +18,7 @@ import org.springframework.web.client.RestTemplate;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class PaymentServiceClient {
 
     private final RestTemplate restTemplate;

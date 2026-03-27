@@ -1,6 +1,7 @@
 package com.homegenie.maintenanceservice.repository;
 
 import com.homegenie.maintenanceservice.model.MaintenanceRequest;
+import com.homegenie.maintenanceservice.model.PaymentStatus;
 import com.homegenie.maintenanceservice.model.Status;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -12,6 +13,12 @@ public interface MaintenanceRepository extends JpaRepository<MaintenanceRequest,
     List<MaintenanceRequest> findByUserId(Long userId);
     List<MaintenanceRequest> findByStatus(Status status);
     List<MaintenanceRequest> findByAssignedTo(Long assignedTo);
+
+    /**
+     * Used by the payment retry scheduler to find COMPLETED requests whose payment
+     * creation failed or was never attempted. The scheduler retries all of these.
+     */
+    List<MaintenanceRequest> findByStatusAndPaymentStatusIn(Status status, List<PaymentStatus> paymentStatuses);
     
     /**
      * Find all maintenance requests for a specific item

@@ -12,6 +12,12 @@ metadata:
 spec:
   replicas: 3
   revisionHistoryLimit: 3
+  # maxUnavailable: 0 — financial service, cannot accept downtime during deploys
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: payment-service
@@ -38,15 +44,12 @@ spec:
             - name: http
               containerPort: 8083
               protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: homegenie-config
           env:
-            - name: SPRING_PROFILES_ACTIVE
-              value: "production"
             - name: JAVA_OPTS
               value: "-Xms256m -Xmx512m -XX:+UseG1GC"
-            - name: DB_HOST
-              value: "postgres-service"
-            - name: DB_PORT
-              value: "5432"
             - name: DB_NAME
               value: "homegenie_payments"
             - name: DB_USERNAME
@@ -69,8 +72,6 @@ spec:
                 secretKeyRef:
                   name: stripe-secret
                   key: webhook-secret
-            - name: KAFKA_BOOTSTRAP_SERVERS
-              value: "kafka-service:9092"
           resources:
             requests:
               cpu: 200m

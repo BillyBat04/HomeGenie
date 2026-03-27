@@ -35,6 +35,7 @@ public class Transaction {
     private BigDecimal amount;
 
     @Column(nullable = false, length = 3)
+    @Builder.Default
     private String currency = "USD";
 
     @Enumerated(EnumType.STRING)
@@ -48,6 +49,7 @@ public class Transaction {
     private String metadata;
 
     @Column(nullable = false)
+    @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
     public enum TransactionType {

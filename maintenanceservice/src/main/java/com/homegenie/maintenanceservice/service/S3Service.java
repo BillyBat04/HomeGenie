@@ -45,7 +45,7 @@ public class S3Service {
 
     @PostConstruct
     public void init() {
-        // Create local storage directory if it doesn't exist
+
         try {
             Path path = Paths.get(localStoragePath);
             if (!Files.exists(path)) {
@@ -57,6 +57,7 @@ public class S3Service {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private AmazonS3 getS3Client() {
         if (s3Client == null) {
             BasicAWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
@@ -69,14 +70,11 @@ public class S3Service {
         return s3Client;
     }
 
-    /**
-     * Upload image with automatic fallback to local storage if S3 fails
-     */
+
     public ImageUploadResult uploadImage(String base64Image) {
         String fileName = "maintenance/" + UUID.randomUUID().toString() + ".jpg";
         byte[] imageBytes = decodeBase64Image(base64Image);
 
-        // Try S3 first
         try {
             String s3Url = uploadToS3(imageBytes, fileName);
             log.info("Image uploaded to S3 successfully: {}", s3Url);
@@ -84,7 +82,6 @@ public class S3Service {
         } catch (Exception e) {
             log.error("S3 upload failed, falling back to local storage: {}", e.getMessage());
 
-            // Fallback to local storage
             try {
                 String localUrl = saveToLocal(imageBytes, fileName);
                 log.info("Image saved to local storage: {}", localUrl);
@@ -96,9 +93,7 @@ public class S3Service {
         }
     }
 
-    /**
-     * Upload directly to S3
-     */
+
     private String uploadToS3(byte[] imageBytes, String fileName) throws Exception {
         ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentLength(imageBytes.length);
@@ -119,9 +114,6 @@ public class S3Service {
                 bucketName, region, fileName);
     }
 
-    /**
-     * Save to local filesystem
-     */
     private String saveToLocal(byte[] imageBytes, String fileName) throws IOException {
         String simpleFileName = fileName.replace("maintenance/", "");
         Path filePath = Paths.get(localStoragePath, simpleFileName);
@@ -131,9 +123,7 @@ public class S3Service {
         return localStorageBaseUrl + "/" + simpleFileName;
     }
 
-    /**
-     * Decode base64 image
-     */
+
     private byte[] decodeBase64Image(String base64Image) {
         String base64Data = base64Image;
         if (base64Image.contains(",")) {
@@ -142,9 +132,6 @@ public class S3Service {
         return Base64.getDecoder().decode(base64Data);
     }
 
-    /**
-     * Check if S3 is available
-     */
     public boolean isS3Available() {
         try {
             getS3Client().doesBucketExistV2(bucketName);
@@ -155,9 +142,6 @@ public class S3Service {
         }
     }
 
-    /**
-     * Sync local images to S3
-     */
     public void syncLocalImagesToS3() {
         try {
             File localDir = new File(localStoragePath);
@@ -179,7 +163,7 @@ public class S3Service {
                         log.info("Synced {} to S3: {}", file.getName(), s3Url);
 
                         // Optionally delete local file after successful sync
-                        // file.delete();
+                        file.delete();
 
                         synced++;
                     } catch (Exception e) {

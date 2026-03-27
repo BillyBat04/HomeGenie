@@ -37,6 +37,7 @@ import static org.mockito.Mockito.*;
  * - Notification status updates
  */
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("null")
 class NotificationServiceTest {
 
     @Mock

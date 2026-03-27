@@ -1,6 +1,5 @@
 package com.homegenie.marketplaceservice.dto;
 
-import com.homegenie.marketplaceservice.model.ServiceCategory;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

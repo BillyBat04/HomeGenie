@@ -117,6 +117,10 @@ kafka:
     maintenance-events: maintenance-events
     user-events: user-events
     notification-events: notification-events
+    # Dedicated reminder topics published by maintenance-service.
+    # These same topics are watched by KEDA ScaledObject for auto-scaling.
+    maintenance-reminder: maintenance-reminder
+    warranty-reminder: warranty-reminder
 
 # Actuator Configuration (Monitoring)
 management:
@@ -124,19 +128,35 @@ management:
     web:
       exposure:
         include: health,info,metrics,prometheus
-  metrics:
-    tags:
-      application: ${spring.application.name}
-      version: "1.0.0"
-      environment: ${ENVIRONMENT:local}
-    export:
-      prometheus:
-        enabled: true
   endpoint:
     health:
       show-details: always
     prometheus:
       enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      version: "1.0.0"
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+# Resilience4j Circuit Breaker
+resilience4j:
+  circuitbreaker:
+    instances:
+      userService:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        register-health-indicator: true
+  timelimiter:
+    instances:
+      userService:
+        timeout-duration: 5s
 
 # Logging
 logging:

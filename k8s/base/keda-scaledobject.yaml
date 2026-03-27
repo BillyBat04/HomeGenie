@@ -38,29 +38,38 @@ spec:
               periodSeconds: 30
           selectPolicy: Max
   triggers:
-    # Trigger 1: payment-completed topic
+    # Trigger 1: payment-events topic
+    # notification-service consumes payment-events → PAYMENT_CONFIRMED/FAILED/REFUNDED events
     - type: kafka
+      authenticationRef:
+        name: kafka-trigger-auth
       metadata:
         bootstrapServers: kafka-service.homegenie.svc.cluster.local:9092
-        consumerGroup: notification-service-group
-        topic: payment-completed
+        consumerGroup: notification-service
+        topic: payment-events
         lagThreshold: "10"
         offsetResetPolicy: latest
         allowIdleConsumers: "false"
     # Trigger 2: maintenance-reminder topic
+    # Published by ItemMaintenanceScheduler when items need servicing
     - type: kafka
+      authenticationRef:
+        name: kafka-trigger-auth
       metadata:
         bootstrapServers: kafka-service.homegenie.svc.cluster.local:9092
-        consumerGroup: notification-service-group
+        consumerGroup: notification-service
         topic: maintenance-reminder
         lagThreshold: "10"
         offsetResetPolicy: latest
         allowIdleConsumers: "false"
     # Trigger 3: warranty-reminder topic
+    # Published by ItemMaintenanceScheduler when warranty is about to expire
     - type: kafka
+      authenticationRef:
+        name: kafka-trigger-auth
       metadata:
         bootstrapServers: kafka-service.homegenie.svc.cluster.local:9092
-        consumerGroup: notification-service-group
+        consumerGroup: notification-service
         topic: warranty-reminder
         lagThreshold: "10"
         offsetResetPolicy: latest

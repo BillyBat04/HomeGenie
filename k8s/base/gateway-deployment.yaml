@@ -12,6 +12,12 @@ metadata:
 spec:
   replicas: 2
   revisionHistoryLimit: 3
+  # maxUnavailable: 0 — zero-downtime for the API gateway (all traffic enters here)
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: gateway-service
@@ -38,12 +44,10 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
-            - name: actuator
-              containerPort: 8080
-              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: homegenie-config
           env:
-            - name: SPRING_PROFILES_ACTIVE
-              value: "production"
             - name: JAVA_OPTS
               value: "-Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
             - name: REDIS_HOST

@@ -1,6 +1,9 @@
 // constants.js
-export const API_BASE_USER = import.meta.env.VITE_USER_SERVICE_URL || 'http://localhost:8081/api';
-export const API_BASE_MAINTENANCE = import.meta.env.VITE_MAINTENANCE_SERVICE_URL || 'http://localhost:8082/api';
+// All API calls are routed through the API Gateway (port 8080).
+// The gateway handles service discovery, JWT validation, and rate limiting.
+export const API_GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:8080';
+export const API_BASE_USER = `${API_GATEWAY_URL}/api`;
+export const API_BASE_MAINTENANCE = `${API_GATEWAY_URL}/api`;
 
 export const PRIORITY_COLORS = {
     CRITICAL: 'bg-red-100 text-red-800 border-red-300',

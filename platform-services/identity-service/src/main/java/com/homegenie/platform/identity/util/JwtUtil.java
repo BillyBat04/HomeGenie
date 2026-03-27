@@ -120,6 +120,7 @@ public class JwtUtil {
      * Validate JWT token
      * ✅ IDENTICAL logic to User Service
      */
+    @SuppressWarnings("deprecation")
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder()

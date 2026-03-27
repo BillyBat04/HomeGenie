@@ -29,6 +29,7 @@ import java.time.LocalDateTime;
 @Service
 @Slf4j
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class PaymentPlatformService {
 
     private final PaymentRepository paymentRepository;

@@ -30,6 +30,7 @@ import static org.mockito.Mockito.*;
  * - API timeout handling
  */
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("null")
 class AIClassificationServiceTest {
 
     @Mock
@@ -117,7 +118,7 @@ class AIClassificationServiceTest {
 
         // Then
         assertNotNull(response);
-        assertEquals(Category.AIR_CONDITIONING, response.getCategory());
+        assertEquals(Category.HVAC, response.getCategory());
     }
 
     @Test
@@ -174,7 +175,7 @@ class AIClassificationServiceTest {
         assertNotNull(response);
         // Should be LOW or MEDIUM
         assertTrue(response.getPriority() == Priority.LOW ||
-                   response.getPriority() == Priority.MEDIUM);
+                   response.getPriority() == Priority.MODERATE);
     }
 
     @Test
@@ -190,7 +191,7 @@ class AIClassificationServiceTest {
         assertNotNull(response);
         assertNotNull(response.getCategory());
         assertNotNull(response.getPriority());
-        assertEquals("OTHER", response.getCategory().name());
+        assertEquals("OTHERS", response.getCategory().name());
     }
 
     @Test
@@ -258,8 +259,8 @@ class AIClassificationServiceTest {
 
         // Then
         assertNotNull(response);
-        assertEquals(Category.OTHER, response.getCategory());
-        assertEquals(Priority.MEDIUM, response.getPriority());
+        assertEquals(Category.OTHERS, response.getCategory());
+        assertEquals(Priority.MODERATE, response.getPriority());
     }
 
     @Test
@@ -335,8 +336,8 @@ class AIClassificationServiceTest {
 
         // Then
         assertNotNull(response);
-        assertEquals(Category.OTHER, response.getCategory());
-        assertEquals(Priority.MEDIUM, response.getPriority());
+        assertEquals(Category.OTHERS, response.getCategory());
+        assertEquals(Priority.MODERATE, response.getPriority());
     }
 
     @Test

@@ -1,0 +1,36 @@
+package com.homegenie.notificationservice.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.Instant;
+import java.time.LocalDate;
+
+/**
+ * Received from maintenance-service via the 'maintenance-reminder' Kafka topic.
+ * Structure must match MaintenanceReminderEvent published by MaintenanceEventPublisher.
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class MaintenanceReminderEvent {
+    private String eventId;
+    private Long itemId;
+    private String itemName;
+    private String itemCategory;
+    private String itemLocation;
+    private Long userId;
+    private String userName;
+    private String userEmail;
+    private LocalDate nextMaintenanceDate;
+    private Integer daysUntilMaintenance;
+    private LocalDate lastMaintenanceDate;
+    private Integer maintenanceFrequencyDays;
+    /** OVERDUE | DUE_NOW | DUE_SOON */
+    private String urgencyLevel;
+    private String eventType;
+    private Instant timestamp;
+}

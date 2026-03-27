@@ -12,6 +12,12 @@ metadata:
 spec:
   replicas: 2
   revisionHistoryLimit: 3
+  # maxUnavailable: 0 — only 2 replicas, losing one during deploy risks Kafka lag spike
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: notification-service
@@ -39,15 +45,12 @@ spec:
             - name: http
               containerPort: 8084
               protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: homegenie-config
           env:
-            - name: SPRING_PROFILES_ACTIVE
-              value: "production"
             - name: JAVA_OPTS
               value: "-Xms256m -Xmx512m -XX:+UseG1GC"
-            - name: DB_HOST
-              value: "postgres-service"
-            - name: DB_PORT
-              value: "5432"
             - name: DB_NAME
               value: "homegenie_notifications"
             - name: DB_USERNAME
@@ -60,8 +63,6 @@ spec:
                 secretKeyRef:
                   name: postgres-secret
                   key: notification-service-password
-            - name: KAFKA_BOOTSTRAP_SERVERS
-              value: "kafka-service:9092"
             - name: KAFKA_CONSUMER_GROUP
               value: "notification-service-group"
             - name: SENDGRID_API_KEY

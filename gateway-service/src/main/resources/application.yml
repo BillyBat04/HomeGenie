@@ -5,115 +5,151 @@ spring:
   application:
     name: gateway-service
 
-  # Redis Configuration (for Rate Limiting)
-  redis:
-    host: localhost
-    port: 6379
-    password: redis123
-    timeout: 2000ms
+  codec:
+    max-in-memory-size: 1MB
+
+gateway:
+  public-routes:
+    - /api/users/register
+    - /api/users/login
+    - /actuator/health/**
+    - /actuator/info
+    - /fallback/**
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
 
   cloud:
     gateway:
-      # Route Definitions
+      httpclient:
+        max-header-size: 32KB
       routes:
-        # User Service Routes - Authentication (public endpoints)
         - id: user-service-auth
-          uri: http://localhost:8081
+          uri: ${USER_SERVICE_URL:http://user-service:8081}
           predicates:
             - Path=/api/auth/**
           filters:
-            - ShadowModeFilter # Phase 2: Shadow mode for authentication
+            - ShadowModeFilter
+            - name: CircuitBreaker
+              args:
+                name: user-service
+                fallbackUri: forward:/fallback/user-service
             - name: RequestRateLimiter
               args:
                 redis-rate-limiter.replenishRate: 10
                 redis-rate-limiter.burstCapacity: 20
                 key-resolver: "#{@userKeyResolver}"
 
-        # User Service Routes - User Management (protected endpoints)
         - id: user-service
-          uri: http://localhost:8081
+          uri: ${USER_SERVICE_URL:http://user-service:8081}
           predicates:
             - Path=/api/users/**
           filters:
             - JwtAuthenticationFilter
+            - name: CircuitBreaker
+              args:
+                name: user-service
+                fallbackUri: forward:/fallback/user-service
             - name: RequestRateLimiter
               args:
                 redis-rate-limiter.replenishRate: 10
                 redis-rate-limiter.burstCapacity: 20
                 key-resolver: "#{@userKeyResolver}"
 
-        # Maintenance Service Routes
         - id: maintenance-service
-          uri: http://localhost:8082
+          uri: ${MAINTENANCE_SERVICE_URL:http://maintenance-service:8082}
           predicates:
             - Path=/api/maintenance/**
           filters:
             - JwtAuthenticationFilter
+            - name: CircuitBreaker
+              args:
+                name: maintenance-service
+                fallbackUri: forward:/fallback/maintenance-service
             - name: RequestRateLimiter
               args:
                 redis-rate-limiter.replenishRate: 10
                 redis-rate-limiter.burstCapacity: 20
                 key-resolver: "#{@userKeyResolver}"
 
-        # Payment Service Routes - Payments
         - id: payment-service-payments
-          uri: http://localhost:8083
+          uri: ${PAYMENT_SERVICE_URL:http://payment-service:8083}
           predicates:
             - Path=/api/payments/**
           filters:
             - JwtAuthenticationFilter
+            - name: CircuitBreaker
+              args:
+                name: payment-service
+                fallbackUri: forward:/fallback/payment-service
             - name: RequestRateLimiter
               args:
                 redis-rate-limiter.replenishRate: 10
                 redis-rate-limiter.burstCapacity: 20
                 key-resolver: "#{@userKeyResolver}"
 
-        # Payment Service Routes - Wallet
         - id: payment-service-wallet
-          uri: http://localhost:8083
+          uri: ${PAYMENT_SERVICE_URL:http://payment-service:8083}
           predicates:
             - Path=/api/wallet/**
           filters:
             - JwtAuthenticationFilter
+            - name: CircuitBreaker
+              args:
+                name: payment-service
+                fallbackUri: forward:/fallback/payment-service
             - name: RequestRateLimiter
               args:
                 redis-rate-limiter.replenishRate: 10
                 redis-rate-limiter.burstCapacity: 20
                 key-resolver: "#{@userKeyResolver}"
 
-        # Payment Service Routes - Invoices
         - id: payment-service-invoices
-          uri: http://localhost:8083
+          uri: ${PAYMENT_SERVICE_URL:http://payment-service:8083}
           predicates:
             - Path=/api/invoices/**
           filters:
             - JwtAuthenticationFilter
+            - name: CircuitBreaker
+              args:
+                name: payment-service
+                fallbackUri: forward:/fallback/payment-service
             - name: RequestRateLimiter
               args:
                 redis-rate-limiter.replenishRate: 10
                 redis-rate-limiter.burstCapacity: 20
                 key-resolver: "#{@userKeyResolver}"
 
-        # Notification Service Routes
         - id: notification-service
-          uri: http://localhost:8084
+          uri: ${NOTIFICATION_SERVICE_URL:http://notification-service:8084}
           predicates:
             - Path=/api/notifications/**
           filters:
             - JwtAuthenticationFilter
+            - name: CircuitBreaker
+              args:
+                name: notification-service
+                fallbackUri: forward:/fallback/notification-service
             - name: RequestRateLimiter
               args:
                 redis-rate-limiter.replenishRate: 10
                 redis-rate-limiter.burstCapacity: 20
                 key-resolver: "#{@userKeyResolver}"
 
-        # Identity Platform Service Routes (Phase 2 - Shadow Mode)
         - id: identity-platform-service
-          uri: http://localhost:8086
+          uri: ${IDENTITY_SERVICE_URL:http://identity-service:8086}
           predicates:
             - Path=/platform/identity/v1/**
           filters:
             - JwtAuthenticationFilter
+            - name: CircuitBreaker
+              args:
+                name: identity-service
+                fallbackUri: forward:/fallback/identity-service
             - name: RequestRateLimiter
               args:
                 redis-rate-limiter.replenishRate: 10
@@ -139,8 +175,10 @@ spring:
             maxAge: 3600
 
 # JWT Configuration (must match User Service)
+# SECURITY: JWT_SECRET is REQUIRED - no default allowed. Set via env var or K8s secret.
+# Generate with: openssl rand -hex 32
 jwt:
-  secret: ${JWT_SECRET:your-secret-key-must-be-at-least-256-bits-long-for-HS256-algorithm}
+  secret: ${JWT_SECRET}
   expiration: 86400000 # 24 hours
 
 # Platform Feature Flags (Phase 2+)
@@ -167,15 +205,66 @@ platform:
 
   # Service URLs
   identity-service:
-    url: http://localhost:8086
+    url: ${IDENTITY_SERVICE_URL:http://identity-service:8086}
   user-service:
-    url: http://localhost:8081
+    url: ${USER_SERVICE_URL:http://user-service:8081}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      user-service:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        slow-call-duration-threshold: 3s
+        slow-call-rate-threshold: 80
+      maintenance-service:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        slow-call-duration-threshold: 3s
+        slow-call-rate-threshold: 80
+      payment-service:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        slow-call-duration-threshold: 3s
+        slow-call-rate-threshold: 80
+      notification-service:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        slow-call-duration-threshold: 3s
+        slow-call-rate-threshold: 80
+      identity-service:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        slow-call-duration-threshold: 3s
+        slow-call-rate-threshold: 80
+  timelimiter:
+    instances:
+      user-service:
+        timeout-duration: 5s
+      maintenance-service:
+        timeout-duration: 5s
+      payment-service:
+        timeout-duration: 5s
+      notification-service:
+        timeout-duration: 5s
+      identity-service:
+        timeout-duration: 5s
 
 # Actuator Configuration
 management:
   actuator:
     username: ${ACTUATOR_USERNAME:admin}
-    password: ${ACTUATOR_PASSWORD:changeme}
+    password: ${ACTUATOR_PASSWORD:}
   endpoints:
     web:
       exposure:
@@ -190,11 +279,12 @@ management:
     redis:
       enabled: false # Disable Redis health check - not a critical Gateway dependency
   metrics:
-    export:
-      prometheus:
-        enabled: true
     tags:
       application: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
 
 # Mini-App Configuration (Phase A4)
 mini-apps:

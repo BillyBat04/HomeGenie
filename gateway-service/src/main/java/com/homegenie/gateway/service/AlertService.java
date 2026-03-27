@@ -2,11 +2,9 @@ package com.homegenie.gateway.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -15,24 +13,25 @@ import java.util.Map;
 
 @Slf4j
 @Service
+@SuppressWarnings("null")
 public class AlertService {
 
-    private final RestTemplate restTemplate;
-    
+    private final WebClient webClient;
+
     @Value("${platform.alerts.slack.webhook-url:}")
     private String slackWebhookUrl;
-    
+
     @Value("${platform.alerts.slack.enabled:false}")
     private boolean slackEnabled;
-    
+
     @Value("${platform.alerts.email.enabled:false}")
     private boolean emailEnabled;
-    
+
     @Value("${platform.alerts.email.recipients:}")
     private String emailRecipients;
 
-    public AlertService() {
-        this.restTemplate = new RestTemplate();
+    public AlertService(WebClient.Builder webClientBuilder) {
+        this.webClient = webClientBuilder.build();
     }
 
     public void info(String title, String message) {
@@ -68,34 +67,31 @@ public class AlertService {
     }
 
     private void sendSlackAlert(AlertLevel level, String title, String message, String timestamp) {
-        try {
-            String color = getColorForLevel(level);
-            String emoji = getEmojiForLevel(level);
-            
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("username", "Shadow Mode Monitor");
-            payload.put("icon_emoji", ":ghost:");
-            
-            Map<String, Object> attachment = new HashMap<>();
-            attachment.put("color", color);
-            attachment.put("title", emoji + " " + title);
-            attachment.put("text", message);
-            attachment.put("footer", "Gateway Service");
-            attachment.put("ts", System.currentTimeMillis() / 1000);
-            
-            Map<String, Object>[] attachments = new Map[]{attachment};
-            payload.put("attachments", attachments);
-            
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
-            restTemplate.postForEntity(slackWebhookUrl, request, String.class);
-            
-            log.debug("Alert sent to Slack: {}", title);
-        } catch (Exception e) {
-            log.error("Failed to send Slack alert: {}", e.getMessage());
-        }
+        String color = getColorForLevel(level);
+        String emoji = getEmojiForLevel(level);
+
+        Map<String, Object> attachment = new HashMap<>();
+        attachment.put("color", color);
+        attachment.put("title", emoji + " " + title);
+        attachment.put("text", message);
+        attachment.put("footer", "Gateway Service");
+        attachment.put("ts", System.currentTimeMillis() / 1000);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("username", "Shadow Mode Monitor");
+        payload.put("icon_emoji", ":ghost:");
+        payload.put("attachments", new Map[]{attachment});
+
+        webClient.post()
+            .uri(slackWebhookUrl)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(payload)
+            .retrieve()
+            .toBodilessEntity()
+            .subscribe(
+                response -> log.debug("Alert sent to Slack: {}", title),
+                error -> log.error("Failed to send Slack alert: {}", error.getMessage())
+            );
     }
 
     private void sendEmailAlert(String title, String message, String timestamp) {

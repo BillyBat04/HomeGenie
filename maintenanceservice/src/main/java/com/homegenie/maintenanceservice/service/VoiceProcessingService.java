@@ -16,11 +16,11 @@ import reactor.core.publisher.Mono;
 import java.time.Duration;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class VoiceProcessingService {
 
     private final WebClient webClient;
@@ -31,9 +31,6 @@ public class VoiceProcessingService {
     @Value("${voice.assistant.timeout:30000}")
     private int timeout;
 
-    /**
-     * Convert speech audio file to text using Python service
-     */
     public Mono<SpeechToTextResponse> speechToText(MultipartFile audioFile) {
         log.info("Converting speech to text for file: {}", audioFile.getOriginalFilename());
 
@@ -63,9 +60,6 @@ public class VoiceProcessingService {
         }
     }
 
-    /**
-     * Convert text to speech audio using Python service
-     */
     public Mono<TextToSpeechResponse> textToSpeech(String text) {
         log.info("Converting text to speech: {}", text.substring(0, Math.min(50, text.length())));
 

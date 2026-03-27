@@ -45,22 +45,27 @@ public class Payment {
     private Long orderId; // Generic order ID (maintenance request ID, booking ID, etc.)
 
     @Column(nullable = false, length = 50)
+    @Builder.Default
     private String miniAppId = "maintenance"; // Mini-app identifier
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
 
     @Column(precision = 10, scale = 2)
+    @Builder.Default
     private BigDecimal commission = BigDecimal.ZERO; // Platform commission
 
     @Column(precision = 5, scale = 4)
+    @Builder.Default
     private BigDecimal commissionRate = BigDecimal.ZERO; // Commission rate (0.0 - 1.0)
 
     @Column(nullable = false, length = 3)
+    @Builder.Default
     private String currency = "USD";
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Builder.Default
     private PaymentStatus status = PaymentStatus.PENDING;
 
     @Enumerated(EnumType.STRING)
@@ -87,6 +92,7 @@ public class Payment {
     private String metadataJson; // Mini-app specific metadata
 
     @Column(nullable = false)
+    @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
     private LocalDateTime updatedAt;

@@ -12,8 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import java.time.LocalDateTime;
-
 /**
  * Marketplace Provider Service
  * 
@@ -22,6 +20,7 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class MarketplaceProviderService {
     
     private final MarketplaceProviderRepository providerRepository;

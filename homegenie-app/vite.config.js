@@ -6,12 +6,9 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      '/api/auth': {
-        target: 'http://localhost:8081',
-        changeOrigin: true,
-      },
-      '/api/maintenance': {
-        target: 'http://localhost:8082',
+      // All API calls routed through the Gateway — single entry point
+      '/api': {
+        target: 'http://localhost:8080',
         changeOrigin: true,
       }
     }

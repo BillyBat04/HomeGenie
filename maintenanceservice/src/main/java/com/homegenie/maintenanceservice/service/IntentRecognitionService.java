@@ -17,6 +17,7 @@ import java.time.Duration;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class IntentRecognitionService {
 
     private final WebClient webClient;

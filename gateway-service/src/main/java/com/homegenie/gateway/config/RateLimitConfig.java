@@ -44,10 +44,9 @@ public class RateLimitConfig {
             }
             
             // 3. Fallback to RemoteAddress (direct connection)
-            if (exchange.getRequest().getRemoteAddress() != null) {
-                String remoteIp = exchange.getRequest().getRemoteAddress()
-                    .getAddress()
-                    .getHostAddress();
+            var remoteAddress = exchange.getRequest().getRemoteAddress();
+            if (remoteAddress != null) {
+                String remoteIp = remoteAddress.getAddress().getHostAddress();
                 return Mono.just("ip:" + remoteIp);
             }
             

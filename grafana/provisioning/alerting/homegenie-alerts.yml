@@ -1,0 +1,183 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: homegenie-production-alerts
+    folder: HomeGenie
+    interval: 1m
+    rules:
+
+      - uid: alert-high-error-rate
+        title: High Error Rate (>1% sustained 5m)
+        condition: C
+        for: 5m
+        annotations:
+          summary: "Error rate exceeded 1% for 5 minutes"
+          description: "Current error rate: {{ $values.C.Value | printf \"%.2f\" }}%"
+        labels:
+          severity: warning
+          team: platform
+        data:
+          - refId: A
+            datasourceUid: ${DS_PROMETHEUS}
+            model:
+              expr: >
+                100 * (sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
+                / clamp_min(sum(rate(http_server_requests_seconds_count[5m])), 1))
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              conditions:
+                - evaluator:
+                    params: [1]
+                    type: gt
+                  query:
+                    params: [A]
+
+      - uid: alert-high-p99-latency
+        title: High P99 Latency (>1s sustained 5m)
+        condition: C
+        for: 5m
+        annotations:
+          summary: "Gateway P99 latency exceeded 1 second"
+          description: "Current P99: {{ $values.C.Value | printf \"%.3f\" }}s"
+        labels:
+          severity: warning
+          team: platform
+        data:
+          - refId: A
+            datasourceUid: ${DS_PROMETHEUS}
+            model:
+              expr: >
+                histogram_quantile(0.99,
+                  rate(http_server_requests_seconds_bucket{application="gateway-service"}[5m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              conditions:
+                - evaluator:
+                    params: [1]
+                    type: gt
+                  query:
+                    params: [A]
+
+      - uid: alert-kafka-lag-spike
+        title: Kafka Consumer Lag Spike (>500 messages)
+        condition: C
+        for: 5m
+        annotations:
+          summary: "Total Kafka consumer lag exceeded 500 messages"
+          description: "Current total lag: {{ $values.C.Value }}"
+        labels:
+          severity: warning
+          team: platform
+        data:
+          - refId: A
+            datasourceUid: ${DS_PROMETHEUS}
+            model:
+              expr: sum(kafka_consumergroup_lag)
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              conditions:
+                - evaluator:
+                    params: [500]
+                    type: gt
+                  query:
+                    params: [A]
+
+      - uid: alert-pod-down
+        title: Service Pod Down (<3 active pods)
+        condition: C
+        for: 2m
+        annotations:
+          summary: "Active service pods dropped below 3"
+          description: "Active pods: {{ $values.C.Value }}"
+        labels:
+          severity: critical
+          team: platform
+        data:
+          - refId: A
+            datasourceUid: ${DS_PROMETHEUS}
+            model:
+              expr: count(up{job=~".*-service"} == 1)
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              conditions:
+                - evaluator:
+                    params: [3]
+                    type: lt
+                  query:
+                    params: [A]
+
+      - uid: alert-payment-failure-surge
+        title: Payment Success Rate Below 99%
+        condition: C
+        for: 5m
+        annotations:
+          summary: "Payment success rate dropped below 99%"
+          description: "Current payment success rate: {{ $values.C.Value | printf \"%.2f\" }}%"
+        labels:
+          severity: critical
+          team: payments
+        data:
+          - refId: A
+            datasourceUid: ${DS_PROMETHEUS}
+            model:
+              expr: >
+                100 * (sum(rate(payment_completed_total[5m]))
+                / clamp_min(sum(rate(payment_completed_total[5m]))
+                          + sum(rate(payment_failed_total[5m])), 0.001))
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              conditions:
+                - evaluator:
+                    params: [99]
+                    type: lt
+                  query:
+                    params: [A]
+
+      - uid: alert-circuit-breaker-open
+        title: Circuit Breaker Open
+        condition: C
+        for: 1m
+        annotations:
+          summary: "Circuit breaker is OPEN for service {{ $labels.name }}"
+          description: "Circuit breaker {{ $labels.name }} has been open for over 1 minute"
+        labels:
+          severity: critical
+          team: platform
+        data:
+          - refId: A
+            datasourceUid: ${DS_PROMETHEUS}
+            model:
+              expr: resilience4j_circuitbreaker_state{state="open"}
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  query:
+                    params: [A]

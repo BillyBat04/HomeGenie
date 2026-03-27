@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class InvoiceService {
 
     private final InvoiceRepository invoiceRepository;
@@ -49,7 +50,8 @@ public class InvoiceService {
         // Calculate total amount
         BigDecimal subtotal = request.getSubtotal();
         BigDecimal tax = request.getTax() != null ? request.getTax() : BigDecimal.ZERO;
-        BigDecimal totalAmount = subtotal.add(tax);
+        BigDecimal lateFee = request.getLateFee() != null ? request.getLateFee() : BigDecimal.ZERO;
+        BigDecimal totalAmount = subtotal.add(tax).add(lateFee);
 
         Invoice invoice = Invoice.builder()
                 .invoiceNumber(invoiceNumber)
@@ -57,7 +59,7 @@ public class InvoiceService {
                 .requestId(request.getRequestId())
                 .subtotal(subtotal)
                 .tax(tax)
-                .lateFee(BigDecimal.ZERO)
+                .lateFee(lateFee)
                 .totalAmount(totalAmount)
                 .status(Invoice.InvoiceStatus.DRAFT)
                 .description(request.getDescription())

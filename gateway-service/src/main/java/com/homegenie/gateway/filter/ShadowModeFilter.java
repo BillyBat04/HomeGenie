@@ -2,25 +2,28 @@ package com.homegenie.gateway.filter;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.homegenie.gateway.metrics.ShadowModeMetrics;
+import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
+import org.reactivestreams.Publisher;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
-import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.*;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.http.server.reactive.ServerHttpResponseDecorator;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 @Component
@@ -28,15 +31,10 @@ public class ShadowModeFilter extends AbstractGatewayFilterFactory<ShadowModeFil
 
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
-    
-    
-    private final AtomicLong shadowCallsTotal = new AtomicLong(0);
-    private final AtomicLong shadowMismatchesTotal = new AtomicLong(0);
-    private final AtomicLong shadowErrorsTotal = new AtomicLong(0);
-    
-    
+    private final ShadowModeMetrics metrics;
+
     private static final Set<String> IGNORE_FIELDS = Set.of(
-        "timestamp", "iat", "exp", "jti", "nbf", 
+        "timestamp", "iat", "exp", "jti", "nbf",
         "refreshToken", "tokenId", "sessionId"
     );
 
@@ -52,13 +50,15 @@ public class ShadowModeFilter extends AbstractGatewayFilterFactory<ShadowModeFil
     @Value("${platform.identity-service.url:http://localhost:8081}")
     private String identityServiceUrl;
 
-    public ShadowModeFilter(WebClient.Builder webClientBuilder) {
+    public ShadowModeFilter(WebClient.Builder webClientBuilder, ShadowModeMetrics metrics) {
         super(Config.class);
         this.webClient = webClientBuilder.build();
         this.objectMapper = new ObjectMapper();
+        this.metrics = metrics;
     }
 
     @Override
+    @SuppressWarnings("null")
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
             if (!shadowModeEnabled) {
@@ -66,55 +66,60 @@ public class ShadowModeFilter extends AbstractGatewayFilterFactory<ShadowModeFil
                 return chain.filter(exchange);
             }
 
-            ServerHttpRequest request = exchange.getRequest();
-            String path = request.getURI().getPath();
+            String path = exchange.getRequest().getURI().getPath();
 
-            
             if (!isAuthenticationRequest(path)) {
                 return chain.filter(exchange);
             }
 
             log.info("Shadow Mode: Intercepting request to {}", path);
 
-            
             return DataBufferUtils.join(exchange.getRequest().getBody())
                 .flatMap(bodyDataBuffer -> {
                     byte[] cachedBodyBytes = new byte[bodyDataBuffer.readableByteCount()];
                     bodyDataBuffer.read(cachedBodyBytes);
                     DataBufferUtils.release(bodyDataBuffer);
-                    
+
                     String requestBodyString = new String(cachedBodyBytes, StandardCharsets.UTF_8);
-                    log.debug("Cached request body: {}", requestBodyString);
+                    HttpHeaders requestHeaders = exchange.getRequest().getHeaders();
 
-                    
-                    DataBuffer bodyBufferForUserService = exchange.getResponse()
-                        .bufferFactory()
-                        .wrap(cachedBodyBytes);
+                    AtomicReference<String> capturedUserServiceResponse = new AtomicReference<>("");
 
-                    
-                    ServerWebExchange modifiedExchange = exchange.mutate()
-                        .request(decorator -> decorator
-                            .headers(httpHeaders -> {})  
-                            
-                        )
-                        .build();
-
-                    
-                    ServerHttpRequest decoratedRequest = new org.springframework.http.server.reactive.ServerHttpRequestDecorator(exchange.getRequest()) {
+                    ServerHttpResponseDecorator responseDecorator = new ServerHttpResponseDecorator(exchange.getResponse()) {
                         @Override
-                        public reactor.core.publisher.Flux<DataBuffer> getBody() {
-                            return reactor.core.publisher.Flux.just(bodyBufferForUserService);
+                        @org.springframework.lang.NonNull
+                        public Mono<Void> writeWith(@org.springframework.lang.NonNull Publisher<? extends DataBuffer> body) {
+                            return DataBufferUtils.join(Flux.from(body)).flatMap(dataBuffer -> {
+                                byte[] content = new byte[dataBuffer.readableByteCount()];
+                                dataBuffer.read(content);
+                                DataBufferUtils.release(dataBuffer);
+                                capturedUserServiceResponse.set(new String(content, StandardCharsets.UTF_8));
+                                DataBuffer newBuffer = exchange.getResponse().bufferFactory().wrap(content);
+                                return super.writeWith(Mono.just(newBuffer));
+                            });
                         }
                     };
 
-                    
-                    return chain.filter(modifiedExchange.mutate().request(decoratedRequest).build())
-                        .doOnSuccess(response -> {
-                            
-                            log.info("User Service responded, now calling Identity Service in shadow...");
-                            callIdentityServiceShadow(path, requestBodyString, request.getHeaders())
+                    DataBuffer bodyBuffer = exchange.getResponse().bufferFactory().wrap(cachedBodyBytes);
+                    ServerHttpRequest decoratedRequest = new org.springframework.http.server.reactive.ServerHttpRequestDecorator(exchange.getRequest()) {
+                        @Override
+                        @org.springframework.lang.NonNull
+                        public Flux<DataBuffer> getBody() {
+                            return Flux.just(bodyBuffer);
+                        }
+                    };
+
+                    ServerWebExchange decoratedExchange = exchange.mutate()
+                        .request(decoratedRequest)
+                        .response(responseDecorator)
+                        .build();
+
+                    return chain.filter(decoratedExchange)
+                        .doOnSuccess(v -> {
+                            String userServiceResponse = capturedUserServiceResponse.get();
+                            callIdentityServiceShadow(path, requestBodyString, requestHeaders)
                                 .subscribe(
-                                    shadowResponse -> log.info("Shadow call completed"),
+                                    shadowResponse -> compareResponses(userServiceResponse, shadowResponse),
                                     error -> log.error("Shadow call failed: {}", error.getMessage())
                                 );
                         });
@@ -122,13 +127,14 @@ public class ShadowModeFilter extends AbstractGatewayFilterFactory<ShadowModeFil
         };
     }
 
-        private Mono<String> callIdentityServiceShadow(String originalPath, String requestBody, HttpHeaders headers) {
+    @SuppressWarnings("null")
+    private Mono<String> callIdentityServiceShadow(String originalPath, String requestBody, HttpHeaders headers) {
         String identityPath = convertToIdentityServicePath(originalPath);
         String fullUrl = identityServiceUrl + identityPath;
 
         log.info("Shadow calling Identity Service: {}", fullUrl);
-        
-        shadowCallsTotal.incrementAndGet();
+
+        Timer.Sample sample = metrics.startShadowCall();
         long startTime = System.currentTimeMillis();
 
         return webClient
@@ -141,11 +147,11 @@ public class ShadowModeFilter extends AbstractGatewayFilterFactory<ShadowModeFil
             .timeout(Duration.ofSeconds(5))
             .doOnSuccess(response -> {
                 long duration = System.currentTimeMillis() - startTime;
+                metrics.recordSuccess(sample);
                 log.info("Identity Service shadow response received ({}ms)", duration);
-                log.debug("Response: {}", response);
             })
             .doOnError(error -> {
-                shadowErrorsTotal.incrementAndGet();
+                metrics.recordFailure(sample);
                 log.error("Identity Service shadow call failed: {}", error.getMessage());
                 if (alertOnMismatch) {
                     sendAlert("Identity Service shadow call failed", error.getMessage());
@@ -168,30 +174,28 @@ public class ShadowModeFilter extends AbstractGatewayFilterFactory<ShadowModeFil
                path.startsWith("/api/auth/logout");
     }
 
-        private void compareResponses(String userServiceResponse, String identityServiceResponse) {
+    private void compareResponses(String userServiceResponse, String identityServiceResponse) {
         try {
             JsonNode userJson = objectMapper.readTree(userServiceResponse);
             JsonNode identityJson = objectMapper.readTree(identityServiceResponse);
-            
+
             List<String> differences = new ArrayList<>();
             compareJsonNodes("", userJson, identityJson, differences);
-            
+
             if (differences.isEmpty()) {
                 log.info("Shadow Mode: Responses match perfectly");
             } else {
-                shadowMismatchesTotal.incrementAndGet();
-                
-                log.warn("SHADOW MODE MISMATCH DETECTED!");
-                log.warn("Found {} differences:", differences.size());
+                metrics.recordMismatch();
+                log.warn("SHADOW MODE MISMATCH DETECTED! Found {} differences:", differences.size());
                 differences.forEach(diff -> log.warn("  - {}", diff));
-                
+
                 if (logMismatches) {
                     log.warn("User Service Response: {}", userServiceResponse);
                     log.warn("Identity Service Response: {}", identityServiceResponse);
                 }
-                
+
                 if (alertOnMismatch) {
-                    sendAlert("Shadow Mode Response Mismatch", 
+                    sendAlert("Shadow Mode Response Mismatch",
                         String.format("Differences: %d\n%s", differences.size(), String.join("\n", differences)));
                 }
             }
@@ -199,8 +203,8 @@ public class ShadowModeFilter extends AbstractGatewayFilterFactory<ShadowModeFil
             log.error("Failed to compare responses: {}", e.getMessage());
         }
     }
-    
-        private void compareJsonNodes(String path, JsonNode node1, JsonNode node2, List<String> differences) {
+
+    private void compareJsonNodes(String path, JsonNode node1, JsonNode node2, List<String> differences) {
         if (node1.getNodeType() != node2.getNodeType()) {
             differences.add(String.format("%s: Type mismatch (%s vs %s)", 
                 path, node1.getNodeType(), node2.getNodeType()));
@@ -255,15 +259,16 @@ public class ShadowModeFilter extends AbstractGatewayFilterFactory<ShadowModeFil
         }
     }
 
-        private void sendAlert(String title, String message) {
-        log.error("🚨 ALERT: {} - {}", title, message);
+    private void sendAlert(String title, String message) {
+        log.error("ALERT: {} - {}", title, message);
     }
-    
-        public Map<String, Long> getMetrics() {
+
+    public Map<String, Long> getMetrics() {
+        ShadowModeMetrics.MetricsSummary summary = metrics.getSummary();
         return Map.of(
-            "shadow_calls_total", shadowCallsTotal.get(),
-            "shadow_mismatches_total", shadowMismatchesTotal.get(),
-            "shadow_errors_total", shadowErrorsTotal.get()
+            "shadow_calls_total", summary.totalCalls(),
+            "shadow_mismatches_total", summary.mismatches(),
+            "shadow_errors_total", summary.failedCalls()
         );
     }
 

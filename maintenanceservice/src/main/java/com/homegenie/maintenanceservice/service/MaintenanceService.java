@@ -14,8 +14,12 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
@@ -30,6 +34,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings({"null", "unchecked", "rawtypes"})
 public class MaintenanceService {
 
     private final MaintenanceRepository repository;
@@ -39,6 +44,10 @@ public class MaintenanceService {
     private final MaintenanceEventPublisher eventPublisher;
     private final RestTemplate restTemplate;
     private final PaymentServiceClient paymentServiceClient;
+    // Used to open a NEW transaction inside afterCommit() callbacks and retry scheduler.
+    // afterCommit() runs outside the original transaction, so we need this to write back
+    // the payment result (SUCCESS / FAILED) to the DB in a fresh transaction.
+    private final TransactionTemplate transactionTemplate;
 
     @Value("${user.service.url:http://localhost:8081}")
     private String userServiceUrl;
@@ -81,8 +90,12 @@ public class MaintenanceService {
 
         MaintenanceRequest saved = repository.save(request);
 
-        // 🔔 Publish MaintenanceCreatedEvent to Kafka
-        publishMaintenanceCreatedEvent(saved, user);
+        // 🔔 Publish MaintenanceCreatedEvent to Kafka AFTER the DB transaction commits.
+        // Why afterCommit? If Kafka fires before DB commit and the commit later fails,
+        // notification-service would process an event for a request that doesn't exist.
+        final MaintenanceRequest savedRef = saved;
+        final UserResponse userRef = user;
+        afterCommit(() -> publishMaintenanceCreatedEvent(savedRef, userRef));
 
         // Keep old email notification for backward compatibility (can be removed later)
         // Send notification to admin
@@ -159,27 +172,29 @@ public class MaintenanceService {
                 request.setResolvedAt(LocalDateTime.now());
                 log.info("Request marked as completed at: {}", request.getResolvedAt());
                 
-                // 💰 Create payment for completed maintenance request
-                try {
-                    BigDecimal amount = calculateMaintenanceAmount(request);
-                    MiniAppPaymentRequest paymentRequest = MiniAppPaymentRequest.builder()
-                            .userId(request.getUserId())
-                            .miniAppId("maintenance")
-                            .orderId(request.getId())
-                            .amount(amount)
-                            .currency("USD")
-                            .paymentMethod("card")
-                            .description("Maintenance service payment - " + request.getTitle())
-                            .build();
-                    
-                    log.info("Creating payment for maintenance request {}: amount={}", id, amount);
-                    PaymentResponse paymentResponse = paymentServiceClient.createPayment(paymentRequest);
-                    log.info("Payment created successfully: paymentId={}", paymentResponse.getPaymentId());
-                    
-                } catch (Exception e) {
-                    log.error("Failed to create payment for maintenance request {}: {}", id, e.getMessage(), e);
-                    // Don't fail the whole update if payment fails
-                }
+                // 💰 Payment is created AFTER the DB transaction commits.
+                // Why: making a network call inside @Transactional holds the DB connection
+                // open for the full duration of the HTTP request to payment-service.
+                // Under load this exhausts HikariCP's connection pool.
+                //
+                // Fix: set paymentStatus=PENDING now (saved to DB), then register an
+                // afterCommit() callback. That callback runs AFTER the connection is
+                // released and calls payment-service in a non-transactional context.
+                // A separate TransactionTemplate then updates status to SUCCESS or FAILED.
+                request.setPaymentStatus(PaymentStatus.PENDING);
+
+                final Long reqId = request.getId();
+                final MiniAppPaymentRequest paymentReq = MiniAppPaymentRequest.builder()
+                        .userId(request.getUserId())
+                        .miniAppId("maintenance")
+                        .orderId(reqId)
+                        .amount(calculateMaintenanceAmount(request))
+                        .currency("USD")
+                        .paymentMethod("card")
+                        .description("Maintenance service payment - " + request.getTitle())
+                        .build();
+
+                afterCommit(() -> processPayment(reqId, paymentReq));
             }
         }
 
@@ -196,9 +211,11 @@ public class MaintenanceService {
                     request.setStatus(Status.IN_PROGRESS);
                 }
 
-                // 🔔 Publish MaintenanceAssignedEvent to Kafka
+                // 🔔 Publish MaintenanceAssignedEvent to Kafka AFTER commit.
                 MaintenanceRequest savedRequest = repository.save(request);
-                publishMaintenanceAssignedEvent(savedRequest, dto.getAssignedTo());
+                final MaintenanceRequest assignedRef = savedRequest;
+                final Long assignedTo = dto.getAssignedTo();
+                afterCommit(() -> publishMaintenanceAssignedEvent(assignedRef, assignedTo));
 
                 // Keep old email notification for backward compatibility (can be removed later)
                 // Send notification to new technician
@@ -241,14 +258,16 @@ public class MaintenanceService {
 
         MaintenanceRequest updated = repository.save(request);
 
-        // 🔔 Publish MaintenanceStatusChangedEvent if status changed
+        // 🔔 Publish status-change events AFTER commit — same reason as above.
         if (oldStatus != updated.getStatus()) {
-            publishMaintenanceStatusChangedEvent(updated, oldStatus, updated.getStatus());
-            
-            // 🔔 Publish MaintenanceCompletedEvent if status changed to COMPLETED and linked to item
-            if (updated.getStatus() == Status.COMPLETED && updated.getItemId() != null) {
-                publishMaintenanceCompletedEvent(updated);
-            }
+            final MaintenanceRequest updatedRef = updated;
+            final Status capturedOldStatus = oldStatus;
+            afterCommit(() -> {
+                publishMaintenanceStatusChangedEvent(updatedRef, capturedOldStatus, updatedRef.getStatus());
+                if (updatedRef.getStatus() == Status.COMPLETED && updatedRef.getItemId() != null) {
+                    publishMaintenanceCompletedEvent(updatedRef);
+                }
+            });
         }
 
         // Keep old email notification for backward compatibility (can be removed later)
@@ -345,6 +364,7 @@ public class MaintenanceService {
         dto.setUpdatedAt(request.getUpdatedAt());
         dto.setResolvedAt(request.getResolvedAt());
         dto.setAdminNotes(request.getAdminNotes());
+        dto.setPaymentStatus(request.getPaymentStatus());
         return dto;
     }
 
@@ -367,6 +387,92 @@ public class MaintenanceService {
             log.error("Failed to fetch technicians from User Service", e);
             return List.of();
         }
+    }
+
+    // =====================================================
+    // PAYMENT (outside transaction)
+    // =====================================================
+
+    /**
+     * Called by afterCommit() when a request is marked COMPLETED.
+     * Runs outside the original @Transactional — the DB connection is already released.
+     * Updates paymentStatus to SUCCESS or FAILED via a fresh TransactionTemplate.
+     */
+    private void processPayment(Long requestId, MiniAppPaymentRequest paymentReq) {
+        PaymentStatus result;
+        try {
+            log.info("Creating payment for maintenance request {}: amount={}", requestId, paymentReq.getAmount());
+            PaymentResponse response = paymentServiceClient.createPayment(paymentReq);
+            log.info("Payment created: paymentId={}", response.getPaymentId());
+            result = PaymentStatus.SUCCESS;
+        } catch (Exception e) {
+            log.error("Payment failed for request {} — status set to FAILED, retry scheduler will retry. Cause: {}",
+                    requestId, e.getMessage());
+            result = PaymentStatus.FAILED;
+        }
+        final PaymentStatus finalResult = result;
+        transactionTemplate.execute(tx -> {
+            repository.findById(requestId).ifPresent(req -> {
+                req.setPaymentStatus(finalResult);
+                repository.save(req);
+            });
+            return null;
+        });
+    }
+
+    /**
+     * Retry scheduler: every 60 seconds, look for COMPLETED requests whose payment
+     * still hasn't succeeded (PENDING or FAILED) and attempt creation again.
+     *
+     * Why PENDING too? A pod restart between afterCommit registration and execution
+     * leaves the status as PENDING forever without this.
+     */
+    @Scheduled(fixedDelayString = "${payment.retry.interval-ms:60000}")
+    public void retryPendingPayments() {
+        List<MaintenanceRequest> toRetry = transactionTemplate.execute(tx ->
+                repository.findByStatusAndPaymentStatusIn(
+                        Status.COMPLETED,
+                        List.of(PaymentStatus.PENDING, PaymentStatus.FAILED)));
+
+        if (toRetry == null || toRetry.isEmpty()) return;
+
+        log.info("Payment retry scheduler: {} requests to retry", toRetry.size());
+        for (MaintenanceRequest req : toRetry) {
+            MiniAppPaymentRequest paymentReq = MiniAppPaymentRequest.builder()
+                    .userId(req.getUserId())
+                    .miniAppId("maintenance")
+                    .orderId(req.getId())
+                    .amount(calculateMaintenanceAmount(req))
+                    .currency("USD")
+                    .paymentMethod("card")
+                    .description("Maintenance service payment - " + req.getTitle())
+                    .build();
+            processPayment(req.getId(), paymentReq);
+        }
+    }
+
+    // =====================================================
+    // TRANSACTION SAFETY HELPER
+    // =====================================================
+
+    /**
+     * Run the given action only after the current DB transaction has committed.
+     * Used for both Kafka publishing and payment calls — both must NOT run inside
+     * the open transaction to avoid holding DB connections during network I/O.
+     */
+    private void afterCommit(Runnable action) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    action.run();
+                } catch (Exception e) {
+                    log.error("Failed to publish Kafka event after DB commit: {}", e.getMessage(), e);
+                    // The DB row exists but the Kafka message was lost.
+                    // In production you would use the Outbox pattern to guarantee delivery.
+                }
+            }
+        });
     }
 
     // =====================================================

@@ -1,8 +1,5 @@
 package com.homegenie.userservice.security;
 
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.security.SignatureException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -20,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * - Invalid token handling
  * - Signature validation
  */
+@SuppressWarnings("null")
 class JwtUtilTest {
 
     private JwtUtil jwtUtil;

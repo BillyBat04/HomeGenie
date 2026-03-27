@@ -1,5 +1,6 @@
 package com.homegenie.gateway.filter;
 
+import com.homegenie.gateway.config.MiniAppConfig;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -7,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -16,7 +16,6 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
-import java.util.Set;
 
 @Slf4j
 @Component
@@ -25,17 +24,12 @@ public class MiniAppFilter implements GlobalFilter, Ordered {
     private static final String MINI_APP_HEADER = "X-MINI-APP";
     private static final String DEFAULT_MINI_APP = "unknown";
     private static final String REQUEST_START_TIME_ATTR = "miniAppRequestStartTime";
-    
-    
-    private static final Set<String> SUPPORTED_MINI_APPS = Set.of(
-        "maintenance",
-        "marketplace",
-        "booking"
-    );
 
+    private final MiniAppConfig miniAppConfig;
     private final MeterRegistry meterRegistry;
-    
-    public MiniAppFilter(MeterRegistry meterRegistry) {
+
+    public MiniAppFilter(MiniAppConfig miniAppConfig, MeterRegistry meterRegistry) {
+        this.miniAppConfig = miniAppConfig;
         this.meterRegistry = meterRegistry;
     }
 
@@ -92,28 +86,23 @@ public class MiniAppFilter implements GlobalFilter, Ordered {
                 });
     }
 
-        private String inferMiniAppFromPath(String path) {
-        if (path.startsWith("/api/maintenance")) {
-            return "maintenance";
-        } else if (path.startsWith("/api/marketplace")) {
-            return "marketplace";
-        } else if (path.startsWith("/api/booking")) {
-            return "booking";
-        } else if (path.startsWith("/api/payments/mini-app")) {
-            
-            return DEFAULT_MINI_APP;
-        }
-        return DEFAULT_MINI_APP;
+    private String inferMiniAppFromPath(String path) {
+        return miniAppConfig.getEnabledApps().stream()
+                .filter(app -> app.getRoutes().stream()
+                        .anyMatch(route -> path.startsWith(route.replace("/**", ""))))
+                .map(MiniAppConfig.MiniApp::getId)
+                .findFirst()
+                .orElse(DEFAULT_MINI_APP);
     }
 
-        private boolean isValidMiniApp(String miniAppId) {
+    private boolean isValidMiniApp(String miniAppId) {
         if (miniAppId == null || miniAppId.isBlank()) {
             return false;
         }
-        return SUPPORTED_MINI_APPS.contains(miniAppId.toLowerCase());
+        return miniAppConfig.isEnabled(miniAppId);
     }
 
-        private void incrementRequestCounter(String miniAppId, String path) {
+    private void incrementRequestCounter(String miniAppId, String path) {
         try {
             Counter.builder("gateway_requests_total")
                     .description("Total Gateway requests per mini-app")
@@ -126,7 +115,7 @@ public class MiniAppFilter implements GlobalFilter, Ordered {
         }
     }
 
-        private void recordRequestDuration(ServerWebExchange exchange, String miniAppId) {
+    private void recordRequestDuration(ServerWebExchange exchange, String miniAppId) {
         try {
             Instant startTime = exchange.getAttribute(REQUEST_START_TIME_ATTR);
             if (startTime != null) {
@@ -144,7 +133,7 @@ public class MiniAppFilter implements GlobalFilter, Ordered {
         }
     }
 
-        private void recordResponseStatus(ServerWebExchange exchange, String miniAppId) {
+    private void recordResponseStatus(ServerWebExchange exchange, String miniAppId) {
         try {
             ServerHttpResponse response = exchange.getResponse();
             HttpStatus statusCode = (HttpStatus) response.getStatusCode();
@@ -163,7 +152,7 @@ public class MiniAppFilter implements GlobalFilter, Ordered {
         }
     }
 
-        private void incrementErrorCounter(String miniAppId, String errorType) {
+    private void incrementErrorCounter(String miniAppId, String errorType) {
         try {
             Counter.builder("gateway_errors_total")
                     .description("Total Gateway errors per mini-app")
@@ -176,7 +165,7 @@ public class MiniAppFilter implements GlobalFilter, Ordered {
         }
     }
 
-        private String extractPathPrefix(String path) {
+    private String extractPathPrefix(String path) {
         if (path.startsWith("/api/")) {
             String[] parts = path.substring(5).split("/");
             return parts.length > 0 ? parts[0] : "unknown";
@@ -184,7 +173,7 @@ public class MiniAppFilter implements GlobalFilter, Ordered {
         return "unknown";
     }
 
-        @Override
+    @Override
     public int getOrder() {
         return Ordered.HIGHEST_PRECEDENCE + 1;
     }

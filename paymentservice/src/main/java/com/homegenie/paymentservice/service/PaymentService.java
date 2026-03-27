@@ -17,11 +17,13 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class PaymentService {
 
     private final StripePaymentService stripePaymentService;
     private final PaymentRepository paymentRepository;
     private final MaintenanceServiceClient maintenanceServiceClient;
+    private final PaymentEventPublisher paymentEventPublisher;
 
     /**
      * Create a new payment
@@ -39,7 +41,7 @@ public class PaymentService {
         log.info("Creating payment for user {} and request {}", request.getUserId(), request.getRequestId());
 
         // Validate if payment already exists for this request
-        if (paymentRepository.existsByRequestId(request.getRequestId())) {
+        if (paymentRepository.existsByOrderId(request.getRequestId())) {
             throw new IllegalStateException("Payment already exists for request: " + request.getRequestId());
         }
 
@@ -58,6 +60,9 @@ public class PaymentService {
             // Step 2: Save to database (local system)
             // If this fails, we need to cancel Stripe payment (compensation)
             payment = paymentRepository.save(payment);
+            
+            // Publish Kafka event so notification-service sends confirmation email to user
+            paymentEventPublisher.publishPaymentConfirmed(payment);
             
             log.info("✅ Saga completed successfully: payment {} created", payment.getId());
             return PaymentResponse.fromEntity(payment);
@@ -110,7 +115,7 @@ public class PaymentService {
      * Get payment by request ID
      */
     public PaymentResponse getPaymentByRequestId(Long requestId) {
-        List<Payment> payments = paymentRepository.findByRequestId(requestId);
+        List<Payment> payments = paymentRepository.findByOrderId(requestId);
         if (payments.isEmpty()) {
             throw new RuntimeException("Payment not found for request: " + requestId);
         }
