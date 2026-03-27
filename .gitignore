@@ -17,6 +17,7 @@ Thumbs.db
 # ===== Env & config =====
 .env
 *.local.yml
+*.md
 
 # ===== Build / temp =====
 out/

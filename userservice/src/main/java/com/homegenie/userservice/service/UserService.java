@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings({"null", "unused"})
 public class UserService {
 
     private final UserRepository userRepository;

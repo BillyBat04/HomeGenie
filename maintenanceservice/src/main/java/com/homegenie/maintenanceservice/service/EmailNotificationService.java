@@ -81,6 +81,7 @@ public class EmailNotificationService {
         }
     }
 
+    @SuppressWarnings("null")
     private void sendViaSMTP(String to, String subject, String htmlBody) throws MessagingException {
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -92,6 +93,7 @@ public class EmailNotificationService {
         log.info("✅ SMTP email sent to {}", to);
     }
 
+    @SuppressWarnings("deprecation")
     private void sendViaSES(String to, String subject, String htmlBody) {
         if (sesClient == null) {
             BasicAWSCredentials creds = new BasicAWSCredentials(accessKey, secretKey);

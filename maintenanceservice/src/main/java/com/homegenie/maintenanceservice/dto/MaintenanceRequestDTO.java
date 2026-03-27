@@ -1,10 +1,8 @@
 package com.homegenie.maintenanceservice.dto;
 
-import com.homegenie.maintenanceservice.model.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
-import java.time.LocalDateTime;
 
 @Data
 @Schema(description = "Maintenance request creation")

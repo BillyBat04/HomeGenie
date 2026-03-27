@@ -2,7 +2,6 @@ package com.homegenie.paymentservice.controller;
 
 import com.homegenie.paymentservice.service.StripePaymentService;
 import com.stripe.model.Event;
-import com.stripe.model.StripeObject;
 import com.stripe.net.Webhook;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,6 +10,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -35,6 +35,7 @@ import static org.mockito.Mockito.*;
  * - Signature replay attack prevention
  */
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("null")
 class WebhookControllerTest {
 
     @Mock
@@ -62,7 +63,6 @@ class WebhookControllerTest {
         try (MockedStatic<Webhook> mockedWebhook = mockStatic(Webhook.class)) {
             Event mockEvent = mock(Event.class);
             when(mockEvent.getType()).thenReturn("payment_intent.succeeded");
-            when(mockEvent.getDataObjectDeserializer()).thenReturn(mock(Event.EventDataObjectDeserializer.class));
 
             mockedWebhook.when(() -> Webhook.constructEvent(payload, signature, WEBHOOK_SECRET))
                     .thenReturn(mockEvent);
@@ -70,10 +70,10 @@ class WebhookControllerTest {
             doNothing().when(stripePaymentService).handleWebhookEvent(mockEvent);
 
             // When
-            String response = webhookController.handleStripeWebhook(payload, signature);
+            ResponseEntity<String> response = webhookController.handleStripeWebhook(payload, signature);
 
             // Then
-            assertEquals("Webhook received", response);
+            assertEquals("Webhook processed successfully", response.getBody());
             verify(stripePaymentService, times(1)).handleWebhookEvent(mockEvent);
         }
     }
@@ -163,10 +163,10 @@ class WebhookControllerTest {
             doNothing().when(stripePaymentService).handleWebhookEvent(mockEvent);
 
             // When
-            String response = webhookController.handleStripeWebhook(payload, signature);
+            ResponseEntity<String> response = webhookController.handleStripeWebhook(payload, signature);
 
             // Then
-            assertEquals("Webhook received", response);
+            assertEquals("Webhook processed successfully", response.getBody());
             verify(stripePaymentService, times(1)).handleWebhookEvent(argThat(event ->
                 event.getType().equals("payment_intent.succeeded")
             ));
@@ -189,10 +189,10 @@ class WebhookControllerTest {
             doNothing().when(stripePaymentService).handleWebhookEvent(mockEvent);
 
             // When
-            String response = webhookController.handleStripeWebhook(payload, signature);
+            ResponseEntity<String> response = webhookController.handleStripeWebhook(payload, signature);
 
             // Then
-            assertEquals("Webhook received", response);
+            assertEquals("Webhook processed successfully", response.getBody());
             verify(stripePaymentService, times(1)).handleWebhookEvent(any());
         }
     }
@@ -213,10 +213,10 @@ class WebhookControllerTest {
             doNothing().when(stripePaymentService).handleWebhookEvent(mockEvent);
 
             // When
-            String response = webhookController.handleStripeWebhook(payload, signature);
+            ResponseEntity<String> response = webhookController.handleStripeWebhook(payload, signature);
 
             // Then
-            assertEquals("Webhook received", response);
+            assertEquals("Webhook processed successfully", response.getBody());
             verify(stripePaymentService, times(1)).handleWebhookEvent(any());
         }
     }
@@ -237,10 +237,10 @@ class WebhookControllerTest {
             doNothing().when(stripePaymentService).handleWebhookEvent(mockEvent);
 
             // When
-            String response = webhookController.handleStripeWebhook(payload, signature);
+            ResponseEntity<String> response = webhookController.handleStripeWebhook(payload, signature);
 
             // Then
-            assertEquals("Webhook received", response);
+            assertEquals("Webhook processed successfully", response.getBody());
             // Should still call service (service will handle unknown types)
             verify(stripePaymentService, times(1)).handleWebhookEvent(any());
         }

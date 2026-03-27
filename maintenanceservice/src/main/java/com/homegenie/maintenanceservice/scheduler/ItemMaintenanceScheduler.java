@@ -50,7 +50,8 @@ public class ItemMaintenanceScheduler {
         @Scheduled(cron = "${scheduler.maintenance-reminder.cron:0 0 8 * * *}")
     @Timed(value = "scheduler.maintenance.reminder", description = "Time taken to check maintenance reminders")
     @Counted(value = "scheduler.maintenance.reminder.executions", description = "Number of maintenance reminder checks")
-    @ConditionalOnProperty(name = "scheduler.maintenance-reminder.enabled", havingValue = "true", matchIfMissing = true)
+    // Note: @ConditionalOnProperty does NOT work on methods — class-level annotation above already controls this.
+    // The maintenanceReminderEnabled flag check inside the method body handles per-run toggling.
     public void checkMaintenanceReminders() {
         if (!maintenanceReminderEnabled) {
             log.debug(" Maintenance reminder scheduler disabled via feature flag");
@@ -124,7 +125,7 @@ public class ItemMaintenanceScheduler {
         @Scheduled(cron = "${scheduler.warranty-reminder.cron:0 15 8 * * *}")
     @Timed(value = "scheduler.warranty.reminder", description = "Time taken to check warranty expirations")
     @Counted(value = "scheduler.warranty.reminder.executions", description = "Number of warranty reminder checks")
-    @ConditionalOnProperty(name = "scheduler.warranty-reminder.enabled", havingValue = "true", matchIfMissing = true)
+    // Note: @ConditionalOnProperty does NOT work on methods — class-level annotation above already controls this.
     public void checkWarrantyExpirations() {
         if (!warrantyReminderEnabled) {
             log.debug("Warranty reminder scheduler disabled via feature flag");
@@ -308,7 +309,7 @@ public class ItemMaintenanceScheduler {
             
             
             
-        } else 
+        } else {
             log.warn("Maintenance reminder scheduler failed ({}/{}): {}", 
                     failures, failureThreshold, e.getMessage());
         }

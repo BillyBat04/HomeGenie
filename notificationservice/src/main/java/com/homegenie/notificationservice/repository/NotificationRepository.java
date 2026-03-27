@@ -28,6 +28,12 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findByInvoiceId(Long invoiceId);
     
     List<Notification> findByRequestId(Long requestId);
+
+    /**
+     * Idempotency check: returns true if a notification with this Kafka eventId was already saved.
+     * Call this before saving to prevent duplicate processing of re-delivered Kafka messages.
+     */
+    boolean existsByEventId(String eventId);
     
     // Find notifications that need retry
     @Query("SELECT n FROM Notification n WHERE n.status = 'FAILED' AND n.retryCount < n.maxRetries AND n.failedAt > :afterTime")

@@ -1,6 +1,7 @@
 package com.homegenie.paymentservice.service;
 
 import com.homegenie.paymentservice.dto.MaintenanceRequestDto;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,9 +29,10 @@ public class MaintenanceServiceClient {
      * @return MaintenanceRequestDto details
      * @throws RuntimeException if request not found or service unavailable
      */
+    @CircuitBreaker(name = "maintenanceService", fallbackMethod = "getMaintenanceRequestFallback")
     public MaintenanceRequestDto getMaintenanceRequest(Long requestId) {
         try {
-            String url = maintenanceServiceUrl + "/api/requests/" + requestId;
+            String url = maintenanceServiceUrl + "/api/maintenance/" + requestId;
             log.info("Fetching maintenance request from: {}", url);
             
             MaintenanceRequestDto request = restTemplate.getForObject(url, MaintenanceRequestDto.class);
@@ -89,5 +91,15 @@ public class MaintenanceServiceClient {
         }
         
         return "Payment not allowed for maintenance request in status: " + request.getStatus();
+    }
+
+    /**
+     * Fallback method when Maintenance Service circuit breaker opens.
+     * Propagates the error — payment cannot proceed without maintenance data.
+     */
+    @SuppressWarnings("unused") // invoked by Resilience4j AOP
+    private MaintenanceRequestDto getMaintenanceRequestFallback(Long requestId, Exception ex) {
+        log.error("Circuit breaker OPEN for Maintenance Service. Request ID: {}, cause: {}", requestId, ex.getMessage());
+        throw new RuntimeException("Maintenance Service is currently unavailable. Please try again later.");
     }
 }

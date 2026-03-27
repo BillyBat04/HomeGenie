@@ -1,5 +1,6 @@
 package com.homegenie.gateway.filter;
 
+import com.homegenie.gateway.config.TrafficSplitState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
@@ -9,42 +10,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import java.util.concurrent.ThreadLocalRandom;
+import java.net.URI;
 
-/**
- * Traffic Split Filter - Phase 3 Implementation
- * 
- * This filter enables gradual traffic migration from User Service to Identity Service.
- * 
- * How it works:
- * 1. Check feature flag: platform.traffic-split.enabled
- * 2. Get traffic percentage: platform.traffic-split.percentage (0-100)
- * 3. Generate random number (0-99)
- * 4. If random < percentage: Route to Identity Service
- * 5. Else: Route to User Service (old)
- * 
- * Gradual Rollout Schedule:
- * - Week 1: 5% traffic
- * - Week 2: 20% traffic
- * - Week 3: 50% traffic
- * - Week 4: 100% traffic
- * 
- * Auto-Rollback:
- * - If error rate > threshold: Automatically set percentage to 0%
- * - Monitored by AutoRollbackMonitor component
- * 
- * @version 1.0.0
- * @since Phase 3 - February 2026
- */
 @Slf4j
 @Component
 public class TrafficSplitFilter extends AbstractGatewayFilterFactory<TrafficSplitFilter.Config> {
 
-    @Value("${platform.traffic-split.enabled:false}")
-    private boolean trafficSplitEnabled;
-
-    @Value("${platform.traffic-split.percentage:0}")
-    private int trafficPercentage;
+    private final TrafficSplitState trafficSplitState;
 
     @Value("${platform.identity-service.url:http://localhost:8086}")
     private String identityServiceUrl;
@@ -52,58 +24,57 @@ public class TrafficSplitFilter extends AbstractGatewayFilterFactory<TrafficSpli
     @Value("${platform.user-service.url:http://localhost:8081}")
     private String userServiceUrl;
 
-    public TrafficSplitFilter() {
+    public TrafficSplitFilter(TrafficSplitState trafficSplitState) {
         super(Config.class);
+        this.trafficSplitState = trafficSplitState;
     }
 
     @Override
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
-            if (!trafficSplitEnabled) {
+            if (!trafficSplitState.isEnabled()) {
                 log.debug("Traffic split disabled, routing to User Service");
                 return chain.filter(exchange);
             }
 
             String path = exchange.getRequest().getURI().getPath();
 
-            // Only apply to authentication endpoints
             if (!isAuthenticationRequest(path)) {
                 return chain.filter(exchange);
             }
 
-            // Generate random number (0-99)
-            int random = ThreadLocalRandom.current().nextInt(100);
+            int currentPercentage = trafficSplitState.getTrafficPercentage();
+            int random = java.util.concurrent.ThreadLocalRandom.current().nextInt(100);
 
-            if (random < trafficPercentage) {
-                // Route to Identity Service (NEW)
-                log.info("🔀 Traffic Split: Routing to Identity Service ({}%)", trafficPercentage);
-                return routeToIdentityService(exchange, path);
+            if (random < currentPercentage) {
+                log.info("Traffic Split: Routing to Identity Service ({}%)", currentPercentage);
+                return routeToIdentityService(exchange, chain, path);
             } else {
-                // Route to User Service (OLD)
-                log.info("🔀 Traffic Split: Routing to User Service ({}% remaining)", 100 - trafficPercentage);
+                log.info("Traffic Split: Routing to User Service ({}% remaining)", 100 - currentPercentage);
                 return chain.filter(exchange);
             }
         };
     }
 
-    /**
-     * Route request to Identity Service
-     */
-    private Mono<Void> routeToIdentityService(ServerWebExchange exchange, String originalPath) {
+    @SuppressWarnings("null")
+    private Mono<Void> routeToIdentityService(ServerWebExchange exchange, GatewayFilterChain chain, String originalPath) {
         String identityPath = convertToIdentityServicePath(originalPath);
         String fullUrl = identityServiceUrl + identityPath;
 
         log.info("➡️ Routing to Identity Service: {}", fullUrl);
 
-        // Mutate request to point to Identity Service
-        ServerWebExchange mutatedExchange = exchange.mutate()
-            .request(exchange.getRequest().mutate()
-                .uri(java.net.URI.create(fullUrl))
-                .build())
-            .build();
-
-        // Continue filter chain with mutated exchange
-        return Mono.empty(); // Gateway will handle routing based on mutated URI
+        try {
+            URI identityUri = URI.create(fullUrl);
+            ServerWebExchange mutatedExchange = exchange.mutate()
+                .request(exchange.getRequest().mutate()
+                    .uri(identityUri)
+                    .build())
+                .build();
+            return chain.filter(mutatedExchange);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid Identity Service URI: {} - Falling back to User Service", fullUrl);
+            return chain.filter(exchange);
+        }
     }
 
     /**

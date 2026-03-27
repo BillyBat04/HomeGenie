@@ -95,6 +95,24 @@ invoice:
   due-days: ${INVOICE_DUE_DAYS:7}
   late-fee-percentage: ${INVOICE_LATE_FEE:5.0}
 
+# Kafka: publish payment lifecycle events so notification-service sends confirmations
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all          # wait for leader + all in-sync replicas before ack
+      retries: 3
+      properties:
+        spring.json.add.type.headers: false
+        enable.idempotence: true     # exactly-once delivery from producer side
+        max.in.flight.requests.per.connection: 1
+
+kafka:
+  topics:
+    payment-events: payment-events
+
 # Logging
 logging:
   level:
@@ -126,3 +144,19 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: method
   show-actuator: false
+
+# Resilience4j Circuit Breaker
+resilience4j:
+  circuitbreaker:
+    instances:
+      maintenanceService:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        register-health-indicator: true
+  timelimiter:
+    instances:
+      maintenanceService:
+        timeout-duration: 5s

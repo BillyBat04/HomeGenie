@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class ItemService {
 
     private final ItemRepository itemRepository;
@@ -376,7 +377,6 @@ public class ItemService {
         stats.put("byCategory", categoryCounts);
         
         // Items needing attention
-        LocalDate today = LocalDate.now();
         List<Item> allItems = itemRepository.findByUserId(userId);
         
         long needsMaintenance = allItems.stream().filter(Item::needsMaintenance).count();

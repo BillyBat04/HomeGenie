@@ -68,6 +68,16 @@ public class MaintenanceRequest {
     private String adminNotes;
 
     /**
+     * Tracks payment creation state for COMPLETED requests.
+     * NULL for requests that are not yet COMPLETED.
+     * Set to PENDING when the request is marked COMPLETED — the async payment call
+     * then updates it to SUCCESS or FAILED depending on the result.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 10)
+    private PaymentStatus paymentStatus;
+
+    /**
      * Check if this request is linked to a specific item
      */
     public boolean hasLinkedItem() {

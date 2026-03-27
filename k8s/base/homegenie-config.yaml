@@ -1,0 +1,48 @@
+---
+# Centralized ConfigMap for shared configuration across all HomeGenie services.
+#
+# WHY: Previously each deployment hardcoded DB_HOST, KAFKA_BOOTSTRAP_SERVERS, etc.
+#      If you rename a service, you had to update every deployment file.
+#      Now you change it once here and all services pick it up.
+#
+# HOW: Deployments use `envFrom: - configMapRef: name: homegenie-config`
+#      which injects ALL keys here as environment variables into the container.
+#      Service-specific values (DB_NAME, secrets) stay in the deployment's own `env:`.
+#
+# NOTE: KEDA ScaledObject trigger params (topic names, bootstrapServers) cannot
+#       reference a ConfigMap directly. See keda-scaledobject.yaml — those values
+#       are intentionally kept in sync with KAFKA_TOPIC_* keys below.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homegenie-config
+  namespace: homegenie
+  labels:
+    app.kubernetes.io/part-of: homegenie
+    app.kubernetes.io/component: config
+data:
+  # ── Spring Boot ──────────────────────────────────────────────────────────────
+  SPRING_PROFILES_ACTIVE: "production"
+
+  # ── PostgreSQL host (shared by user, payment, notification, maintenance) ─────
+  # Individual DB_NAME and credentials are set per-deployment via Secret references.
+  DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+
+  # ── Kafka (shared by payment, notification, maintenance) ─────────────────────
+  KAFKA_BOOTSTRAP_SERVERS: "kafka-service:9092"
+
+  # ── Kafka topic names ────────────────────────────────────────────────────────
+  # Single source of truth. Keep in sync with:
+  #   - keda-scaledobject.yaml  (topic: field)
+  #   - Application @KafkaListener topic values
+  KAFKA_TOPIC_PAYMENT_COMPLETED: "payment-completed"
+  KAFKA_TOPIC_MAINTENANCE_REMINDER: "maintenance-reminder"
+  KAFKA_TOPIC_WARRANTY_REMINDER: "warranty-reminder"
+
+  # ── Inter-service URLs ───────────────────────────────────────────────────────
+  # Used by maintenance-service PaymentServiceClient to create payments.
+  # Spring relaxed binding converts PAYMENT_SERVICE_URL → payment.service.url
+  PAYMENT_SERVICE_URL: "http://payment-service:8083"
+  # Used by payment-service MaintenanceServiceClient to validate requests.
+  MAINTENANCE_SERVICE_URL: "http://maintenance-service:8082"

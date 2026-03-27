@@ -94,23 +94,28 @@ data:
               description: "Consumer group {{ $labels.consumergroup }} on topic {{ $labels.topic }} has {{ $value }} messages lag (threshold: 100)."
 
           # Kafka Consumer Not Consuming
+          # Uses kafka-lag-exporter metric (delta of lag over 10m).
+          # If lag grew by >100 messages in 10 minutes, consumer is falling behind.
           - alert: KafkaConsumerNotConsuming
-            expr: rate(kafka_consumer_records_consumed_total[5m]) == 0
+            expr: |
+              sum(delta(kafka_consumergroup_lag{
+                topic=~"payment-completed|maintenance-reminder|warranty-reminder"
+              }[10m])) by (consumergroup, topic) > 100
             for: 5m
             labels:
               severity: warning
               team: platform
             annotations:
-              summary: "Kafka consumer {{ $labels.consumergroup }} stopped consuming"
-              description: "Consumer {{ $labels.consumergroup }} has not consumed messages for 5 minutes."
+              summary: "Kafka consumer {{ $labels.consumergroup }} falling behind on {{ $labels.topic }}"
+              description: "Consumer {{ $labels.consumergroup }} lag on topic {{ $labels.topic }} grew by {{ $value }} messages in 10 minutes. Consumer may have stopped processing."
 
           # High Kafka Message Processing Failures
           - alert: HighKafkaProcessingFailures
             expr: |
               (
-                sum(rate(kafka_consumer_records_failed_total[5m])) by (topic)
+                sum(rate(spring_kafka_listener_seconds_count{result="failure"}[5m])) by (topic)
                 /
-                sum(rate(kafka_consumer_records_consumed_total[5m])) by (topic)
+                clamp_min(sum(rate(spring_kafka_listener_seconds_count[5m])) by (topic), 0.001)
               ) * 100 > 5
             for: 5m
             labels:
@@ -174,12 +179,14 @@ data:
               description: "Disk space on {{ $labels.instance }} is {{ $value | humanize }}% available (threshold: 10%)."
 
           # Database Connection Pool Exhaustion Warning
+          # hikaricp_connections{state="active"} is the correct Micrometer metric (HikariCP 4+).
+          # clamp_min prevents division by zero on fresh startup before pool initializes.
           - alert: DatabaseConnectionPoolWarning
             expr: |
               (
-                hikaricp_connections_active
+                sum(hikaricp_connections{state="active"}) by (job)
                 /
-                hikaricp_connections_max
+                clamp_min(sum(hikaricp_connections_max) by (job), 1)
               ) * 100 > 80
             for: 5m
             labels:
@@ -193,9 +200,9 @@ data:
           - alert: DatabaseConnectionPoolCritical
             expr: |
               (
-                hikaricp_connections_active
+                sum(hikaricp_connections{state="active"}) by (job)
                 /
-                hikaricp_connections_max
+                clamp_min(sum(hikaricp_connections_max) by (job), 1)
               ) * 100 > 95
             for: 2m
             labels:
@@ -230,7 +237,7 @@ data:
               (
                 sum(rate(http_server_requests_seconds_count{status=~"5.."}[1h])) by (job)
                 /
-                sum(rate(http_server_requests_seconds_count[1h])) by (job)
+                clamp_min(sum(rate(http_server_requests_seconds_count[1h])) by (job), 0.001)
               ) * 100 > 0.1
             for: 30m
             labels:
@@ -240,13 +247,37 @@ data:
               summary: "Error budget exhaustion on {{ $labels.job }}"
               description: "Service {{ $labels.job }} error rate {{ $value | humanize }}% exceeds error budget (0.1%)."
 
+          # Fast-burn error budget (SRE burn-rate model)
+          # At 99.9% SLA the monthly error budget = 0.1% of requests.
+          # A 1.44% error rate burns that budget 14.4× faster = gone in ~2 days.
+          # This fires in 2 minutes — page someone immediately.
+          - alert: FastBurnErrorBudget
+            expr: |
+              (
+                sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m])) by (job)
+                /
+                clamp_min(sum(rate(http_server_requests_seconds_count[5m])) by (job), 0.001)
+              ) * 100 > 1.44
+            for: 2m
+            labels:
+              severity: critical
+              team: platform
+            annotations:
+              summary: "Fast error budget burn on {{ $labels.job }}"
+              description: "{{ $labels.job }} error rate {{ $value | humanize }}% is consuming the monthly error budget 14.4× faster than sustainable. Action required within 1 hour or budget is exhausted in 2 days."
+              runbook_url: "https://wiki.homegenie.com/runbooks/error-budget"
+
           # Payment Success Rate SLA
           - alert: PaymentSuccessRateSLA
             expr: |
               (
                 sum(increase(payment_completed_total[1h]))
                 /
-                (sum(increase(payment_completed_total[1h])) + sum(increase(payment_failed_total[1h])))
+                clamp_min(
+                  sum(increase(payment_completed_total[1h]))
+                  + sum(increase(payment_failed_total[1h])),
+                  1
+                )
               ) * 100 < 99
             for: 15m
             labels:
@@ -263,7 +294,11 @@ data:
               (
                 sum(increase(email_sent_success_total[1h]))
                 /
-                sum(increase(email_sent_total[1h]))
+                clamp_min(
+                  sum(increase(email_sent_success_total[1h]))
+                  + sum(increase(email_sent_failed_total[1h])),
+                  1
+                )
               ) * 100 < 95
             for: 15m
             labels:
@@ -293,7 +328,10 @@ data:
               (
                 sum(rate(payment_failed_total[15m]))
                 /
-                (sum(rate(payment_completed_total[15m])) + sum(rate(payment_failed_total[15m])))
+                clamp_min(
+                  sum(rate(payment_completed_total[15m])) + sum(rate(payment_failed_total[15m])),
+                  0.001
+                )
               ) * 100 > 5
             for: 15m
             labels:

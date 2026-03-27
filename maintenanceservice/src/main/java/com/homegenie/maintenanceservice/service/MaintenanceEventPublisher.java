@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class MaintenanceEventPublisher {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
@@ -23,6 +24,14 @@ public class MaintenanceEventPublisher {
 
     @Value("${kafka.topics.maintenance-events:maintenance-events}")
     private String maintenanceEventsTopic;
+
+    // Dedicated topics watched by KEDA ScaledObject to auto-scale notification-service.
+    // Reminder events go to their own topics so KEDA can detect lag independently.
+    @Value("${kafka.topics.maintenance-reminder:maintenance-reminder}")
+    private String maintenanceReminderTopic;
+
+    @Value("${kafka.topics.warranty-reminder:warranty-reminder}")
+    private String warrantyReminderTopic;
 
     /**
      * Publish maintenance created event
@@ -106,7 +115,8 @@ public class MaintenanceEventPublisher {
             log.info("📤 Publishing MaintenanceReminderEvent: itemId={}, urgency={}", 
                     event.getItemId(), event.getUrgencyLevel());
             
-            kafkaTemplate.send(maintenanceEventsTopic, event.getItemId().toString(), eventJson);
+            // Use dedicated maintenance-reminder topic (watched by KEDA for auto-scaling)
+            kafkaTemplate.send(maintenanceReminderTopic, event.getItemId().toString(), eventJson);
             
             log.info("✅ MaintenanceReminderEvent published successfully");
         } catch (Exception e) {
@@ -124,7 +134,8 @@ public class MaintenanceEventPublisher {
             log.info("📤 Publishing WarrantyExpiringEvent: itemId={}, urgency={}", 
                     event.getItemId(), event.getUrgencyLevel());
             
-            kafkaTemplate.send(maintenanceEventsTopic, event.getItemId().toString(), eventJson);
+            // Use dedicated warranty-reminder topic (watched by KEDA for auto-scaling)
+            kafkaTemplate.send(warrantyReminderTopic, event.getItemId().toString(), eventJson);
             
             log.info("✅ WarrantyExpiringEvent published successfully");
         } catch (Exception e) {

@@ -12,8 +12,8 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
-
 
 @Slf4j
 @Component
@@ -41,12 +41,12 @@ public class RequestLoggingFilter implements GlobalFilter, Ordered {
       
         String clientIp = getClientIp(request);
         
-        log.info("→ Request [{}] {} {} from {} - User-Agent: {}", 
+        log.info("→ Request [{}] {} {} from {} - User-Agent: {}",
             requestId,
             request.getMethod(),
             request.getURI().getPath(),
             clientIp,
-            request.getHeaders().getFirst("User-Agent"));
+            Objects.requireNonNullElse(request.getHeaders().getFirst("User-Agent"), "-"));
         
       
         return chain.filter(exchange)
@@ -82,14 +82,12 @@ public class RequestLoggingFilter implements GlobalFilter, Ordered {
     private String getClientIp(ServerHttpRequest request) {
         String xff = request.getHeaders().getFirst("X-Forwarded-For");
         if (xff != null && !xff.isBlank()) {
-            
             return xff.split(",")[0].trim();
         }
-        
-        if (request.getRemoteAddress() != null) {
-            return request.getRemoteAddress().getAddress().getHostAddress();
+        var remoteAddress = request.getRemoteAddress();
+        if (remoteAddress != null) {
+            return remoteAddress.getAddress().getHostAddress();
         }
-        
         return "unknown";
     }
     

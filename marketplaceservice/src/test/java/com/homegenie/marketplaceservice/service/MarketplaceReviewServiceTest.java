@@ -29,6 +29,7 @@ import static org.mockito.Mockito.*;
  * Tests review submission, rating validation, and provider rating auto-update
  */
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("null")
 class MarketplaceReviewServiceTest {
 
     @Mock

@@ -1,3 +1,5 @@
+package com.homegenie.userservice.controller;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.homegenie.userservice.dto.LoginRequest;
 import com.homegenie.userservice.dto.RegisterRequest;
@@ -20,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
+@SuppressWarnings("null")
 public class AuthControllerIntegrationTest {
 
     @Autowired

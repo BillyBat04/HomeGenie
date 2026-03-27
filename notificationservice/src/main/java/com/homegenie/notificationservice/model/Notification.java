@@ -63,6 +63,7 @@ public class Notification {
     
     @Schema(description = "Mini-app identifier", example = "maintenance")
     @Column(name = "mini_app_id", nullable = false, length = 50)
+    @Builder.Default
     private String miniAppId = "maintenance";
     
     @Schema(description = "Maintenance request ID", example = "2001")
@@ -78,6 +79,17 @@ public class Notification {
     @Schema(description = "Email template ID", example = "payment-confirmation")
     private String templateId;
 
+    /**
+     * Idempotency key — stores the eventId from the Kafka message.
+     * Before saving a new notification we check if one with this eventId already exists.
+     * This prevents duplicate emails when Kafka re-delivers a message (at-least-once delivery).
+     * Example: Kafka consumer crashes after processing but before committing offset →
+     *          Kafka retries → without this check the email would be sent twice.
+     */
+    @Schema(description = "Kafka event ID used for idempotency", example = "550e8400-e29b-41d4-a716-446655440000")
+    @Column(name = "event_id", unique = true)
+    private String eventId;
+
     // Metadata
     @Schema(description = "Additional metadata in JSON", example = "{\"amount\": 150}")
     @Column(columnDefinition = "TEXT")
@@ -85,9 +97,11 @@ public class Notification {
 
     // Retry tracking
     @Schema(description = "Current retry count", example = "0")
+    @Builder.Default
     private Integer retryCount = 0;
     
     @Schema(description = "Maximum retry attempts", example = "3")
+    @Builder.Default
     private Integer maxRetries = 3;
 
     @Schema(description = "Error message if failed", example = "SMTP connection timeout")
@@ -150,6 +164,8 @@ public class Notification {
         MAINTENANCE_REQUEST_ASSIGNED,
         MAINTENANCE_REQUEST_UPDATED,
         MAINTENANCE_REQUEST_COMPLETED,
+        MAINTENANCE_REMINDER,
+        WARRANTY_EXPIRY_ALERT,
         SYSTEM_ALERT,
         WELCOME_EMAIL,
         PASSWORD_RESET

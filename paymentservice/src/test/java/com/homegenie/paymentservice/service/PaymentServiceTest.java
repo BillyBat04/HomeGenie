@@ -32,6 +32,7 @@ import static org.mockito.Mockito.*;
  * - Transaction audit trail
  */
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("null")
 class PaymentServiceTest {
 
     @Mock
@@ -90,7 +91,7 @@ class PaymentServiceTest {
     }
 
     @Test
-    void testCreatePayment_DuplicateRequest_ThrowsException() {
+    void testCreatePayment_DuplicateRequest_ThrowsException() throws StripeException {
         // Given
         when(paymentRepository.existsByOrderId(anyLong())).thenReturn(true);
 

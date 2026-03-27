@@ -3,7 +3,6 @@ package com.homegenie.userservice.controller;
 import com.homegenie.userservice.dto.*;
 import com.homegenie.userservice.service.UserService;
 import com.homegenie.userservice.service.RefreshTokenService;
-import com.homegenie.userservice.model.RefreshToken;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

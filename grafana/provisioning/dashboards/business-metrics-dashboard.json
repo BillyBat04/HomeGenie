@@ -1,496 +1,645 @@
 {
     "uid": "homegenie-business-metrics",
     "title": "HomeGenie - Business Metrics",
-    "id": null,
-    "dashboard": {
-        "uid": "homegenie-business-metrics",
-        "title": "HomeGenie - Business Metrics",
-        "tags": [
-            "homegenie",
-            "business",
-            "kpi"
-        ],
-        "timezone": "browser",
-        "schemaVersion": 27,
-        "version": 1,
-        "refresh": "1m",
-        "time": {
-            "from": "now-24h",
-            "to": "now"
-        },
-        "panels": [
-            {
-                "id": 1,
-                "type": "stat",
-                "title": "Total Users Registered (24h)",
-                "gridPos": {
-                    "x": 0,
-                    "y": 0,
-                    "w": 6,
-                    "h": 4
-                },
-                "targets": [
-                    {
-                        "expr": "sum(increase(user_registered_total[24h]))",
-                        "legendFormat": "Users",
-                        "refId": "A"
-                    }
-                ],
-                "fieldConfig": {
-                    "defaults": {
-                        "unit": "short",
-                        "color": {
-                            "mode": "thresholds"
-                        },
-                        "thresholds": {
-                            "mode": "absolute",
-                            "steps": [
-                                {
-                                    "value": null,
-                                    "color": "blue"
-                                },
-                                {
-                                    "value": 10,
-                                    "color": "green"
-                                },
-                                {
-                                    "value": 100,
-                                    "color": "yellow"
-                                }
-                            ]
-                        }
+    "tags": [
+        "homegenie",
+        "business",
+        "kpi"
+    ],
+    "timezone": "browser",
+    "schemaVersion": 36,
+    "version": 1,
+    "refresh": "1m",
+    "time": {
+        "from": "now-24h",
+        "to": "now"
+    },
+    "panels": [
+        {
+            "id": 1,
+            "type": "stat",
+            "title": "Total Users Registered (24h)",
+            "gridPos": {
+                "x": 0,
+                "y": 0,
+                "w": 6,
+                "h": 4
+            },
+            "targets": [
+                {
+                    "expr": "sum(increase(user_registered_total[24h]))",
+                    "legendFormat": "Users",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
                     }
                 }
-            },
-            {
-                "id": 2,
-                "type": "stat",
-                "title": "Payment Success Rate (24h)",
-                "gridPos": {
-                    "x": 6,
-                    "y": 0,
-                    "w": 6,
-                    "h": 4
-                },
-                "targets": [
-                    {
-                        "expr": "100 * (sum(increase(payment_completed_total[24h])) / (sum(increase(payment_completed_total[24h])) + sum(increase(payment_failed_total[24h]))))",
-                        "legendFormat": "Success %",
-                        "refId": "A"
-                    }
-                ],
-                "fieldConfig": {
-                    "defaults": {
-                        "unit": "percent",
-                        "color": {
-                            "mode": "thresholds"
-                        },
-                        "thresholds": {
-                            "mode": "absolute",
-                            "steps": [
-                                {
-                                    "value": null,
-                                    "color": "red"
-                                },
-                                {
-                                    "value": 95,
-                                    "color": "yellow"
-                                },
-                                {
-                                    "value": 99,
-                                    "color": "green"
-                                }
-                            ]
-                        },
-                        "decimals": 2
-                    }
-                }
-            },
-            {
-                "id": 3,
-                "type": "stat",
-                "title": "Total Payments (24h)",
-                "gridPos": {
-                    "x": 12,
-                    "y": 0,
-                    "w": 6,
-                    "h": 4
-                },
-                "targets": [
-                    {
-                        "expr": "sum(increase(payment_completed_total[24h]))",
-                        "legendFormat": "Payments",
-                        "refId": "A"
-                    }
-                ],
-                "fieldConfig": {
-                    "defaults": {
-                        "unit": "short",
-                        "color": {
-                            "mode": "thresholds"
-                        },
-                        "thresholds": {
-                            "mode": "absolute",
-                            "steps": [
-                                {
-                                    "value": null,
-                                    "color": "green"
-                                }
-                            ]
-                        }
-                    }
-                }
-            },
-            {
-                "id": 4,
-                "type": "stat",
-                "title": "Email Delivery Success (24h)",
-                "gridPos": {
-                    "x": 18,
-                    "y": 0,
-                    "w": 6,
-                    "h": 4
-                },
-                "targets": [
-                    {
-                        "expr": "100 * (sum(increase(email_sent_success_total[24h])) / sum(increase(email_sent_total[24h])))",
-                        "legendFormat": "Success %",
-                        "refId": "A"
-                    }
-                ],
-                "fieldConfig": {
-                    "defaults": {
-                        "unit": "percent",
-                        "color": {
-                            "mode": "thresholds"
-                        },
-                        "thresholds": {
-                            "mode": "absolute",
-                            "steps": [
-                                {
-                                    "value": null,
-                                    "color": "red"
-                                },
-                                {
-                                    "value": 90,
-                                    "color": "yellow"
-                                },
-                                {
-                                    "value": 95,
-                                    "color": "green"
-                                }
-                            ]
-                        },
-                        "decimals": 2
-                    }
-                }
-            },
-            {
-                "id": 5,
-                "type": "timeseries",
-                "title": "User Registration Trend",
-                "gridPos": {
-                    "x": 0,
-                    "y": 4,
-                    "w": 12,
-                    "h": 8
-                },
-                "targets": [
-                    {
-                        "expr": "rate(user_registered_total[5m]) * 60",
-                        "legendFormat": "Registrations per minute",
-                        "refId": "A"
-                    }
-                ],
-                "fieldConfig": {
-                    "defaults": {
-                        "unit": "short",
-                        "custom": {
-                            "drawStyle": "line",
-                            "lineInterpolation": "smooth",
-                            "fillOpacity": 10
-                        }
-                    }
-                }
-            },
-            {
-                "id": 6,
-                "type": "timeseries",
-                "title": "User Login Activity",
-                "gridPos": {
-                    "x": 12,
-                    "y": 4,
-                    "w": 12,
-                    "h": 8
-                },
-                "targets": [
-                    {
-                        "expr": "rate(user_login_success_total[5m]) * 60",
-                        "legendFormat": "Successful Logins",
-                        "refId": "A"
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short",
+                    "color": {
+                        "mode": "thresholds"
                     },
-                    {
-                        "expr": "rate(user_login_failed_total[5m]) * 60",
-                        "legendFormat": "Failed Logins",
-                        "refId": "B"
-                    }
-                ],
-                "fieldConfig": {
-                    "defaults": {
-                        "unit": "short",
-                        "custom": {
-                            "drawStyle": "line",
-                            "lineInterpolation": "smooth"
-                        }
-                    }
-                }
-            },
-            {
-                "id": 7,
-                "type": "timeseries",
-                "title": "Payment Processing Rate",
-                "gridPos": {
-                    "x": 0,
-                    "y": 12,
-                    "w": 12,
-                    "h": 8
-                },
-                "targets": [
-                    {
-                        "expr": "rate(payment_completed_total[5m]) * 60",
-                        "legendFormat": "Successful Payments/min",
-                        "refId": "A"
-                    },
-                    {
-                        "expr": "rate(payment_failed_total[5m]) * 60",
-                        "legendFormat": "Failed Payments/min",
-                        "refId": "B"
-                    }
-                ],
-                "fieldConfig": {
-                    "defaults": {
-                        "unit": "short",
-                        "custom": {
-                            "drawStyle": "line",
-                            "lineInterpolation": "smooth"
-                        }
-                    }
-                }
-            },
-            {
-                "id": 8,
-                "type": "piechart",
-                "title": "Payment Status Distribution (24h)",
-                "gridPos": {
-                    "x": 12,
-                    "y": 12,
-                    "w": 6,
-                    "h": 8
-                },
-                "targets": [
-                    {
-                        "expr": "sum(increase(payment_completed_total[24h]))",
-                        "legendFormat": "Completed",
-                        "refId": "A"
-                    },
-                    {
-                        "expr": "sum(increase(payment_failed_total[24h]))",
-                        "legendFormat": "Failed",
-                        "refId": "B"
-                    },
-                    {
-                        "expr": "sum(increase(payment_pending_total[24h]))",
-                        "legendFormat": "Pending",
-                        "refId": "C"
-                    }
-                ],
-                "options": {
-                    "legend": {
-                        "displayMode": "list",
-                        "placement": "bottom"
-                    }
-                }
-            },
-            {
-                "id": 9,
-                "type": "stat",
-                "title": "Maintenance Reminders Sent (24h)",
-                "gridPos": {
-                    "x": 18,
-                    "y": 12,
-                    "w": 6,
-                    "h": 4
-                },
-                "targets": [
-                    {
-                        "expr": "sum(increase(scheduler_maintenance_reminder_total[24h]))",
-                        "legendFormat": "Reminders",
-                        "refId": "A"
-                    }
-                ],
-                "fieldConfig": {
-                    "defaults": {
-                        "unit": "short",
-                        "color": {
-                            "mode": "palette-classic"
-                        }
-                    }
-                }
-            },
-            {
-                "id": 10,
-                "type": "stat",
-                "title": "Warranty Alerts Sent (24h)",
-                "gridPos": {
-                    "x": 18,
-                    "y": 16,
-                    "w": 6,
-                    "h": 4
-                },
-                "targets": [
-                    {
-                        "expr": "sum(increase(scheduler_warranty_reminder_total[24h]))",
-                        "legendFormat": "Alerts",
-                        "refId": "A"
-                    }
-                ],
-                "fieldConfig": {
-                    "defaults": {
-                        "unit": "short",
-                        "color": {
-                            "mode": "palette-classic"
-                        }
-                    }
-                }
-            },
-            {
-                "id": 11,
-                "type": "timeseries",
-                "title": "Kafka Event Processing Rate",
-                "gridPos": {
-                    "x": 0,
-                    "y": 20,
-                    "w": 12,
-                    "h": 8
-                },
-                "targets": [
-                    {
-                        "expr": "rate(kafka_consumer_records_consumed_total{topic=\"payment-completed\"}[5m])",
-                        "legendFormat": "Payment Events",
-                        "refId": "A"
-                    },
-                    {
-                        "expr": "rate(kafka_consumer_records_consumed_total{topic=\"maintenance-reminder\"}[5m])",
-                        "legendFormat": "Maintenance Events",
-                        "refId": "B"
-                    },
-                    {
-                        "expr": "rate(kafka_consumer_records_consumed_total{topic=\"warranty-reminder\"}[5m])",
-                        "legendFormat": "Warranty Events",
-                        "refId": "C"
-                    }
-                ],
-                "fieldConfig": {
-                    "defaults": {
-                        "unit": "short",
-                        "custom": {
-                            "drawStyle": "line",
-                            "lineInterpolation": "smooth"
-                        }
-                    }
-                }
-            },
-            {
-                "id": 12,
-                "type": "timeseries",
-                "title": "Email Delivery Performance",
-                "gridPos": {
-                    "x": 12,
-                    "y": 20,
-                    "w": 12,
-                    "h": 8
-                },
-                "targets": [
-                    {
-                        "expr": "rate(email_sent_success_total[5m])",
-                        "legendFormat": "Successful",
-                        "refId": "A"
-                    },
-                    {
-                        "expr": "rate(email_sent_failed_total[5m])",
-                        "legendFormat": "Failed",
-                        "refId": "B"
-                    }
-                ],
-                "fieldConfig": {
-                    "defaults": {
-                        "unit": "short",
-                        "custom": {
-                            "drawStyle": "line",
-                            "lineInterpolation": "smooth"
-                        }
-                    }
-                }
-            },
-            {
-                "id": 13,
-                "type": "table",
-                "title": "Top 5 Endpoints by Traffic (24h)",
-                "gridPos": {
-                    "x": 0,
-                    "y": 28,
-                    "w": 12,
-                    "h": 6
-                },
-                "targets": [
-                    {
-                        "expr": "topk(5, sum by (uri) (increase(http_server_requests_seconds_count[24h])))",
-                        "legendFormat": "{{uri}}",
-                        "refId": "A",
-                        "format": "table"
-                    }
-                ],
-                "options": {
-                    "showHeader": true
-                },
-                "fieldConfig": {
-                    "defaults": {
-                        "custom": {
-                            "align": "left"
-                        }
-                    }
-                }
-            },
-            {
-                "id": 14,
-                "type": "table",
-                "title": "Slowest Endpoints (P99 Latency)",
-                "gridPos": {
-                    "x": 12,
-                    "y": 28,
-                    "w": 12,
-                    "h": 6
-                },
-                "targets": [
-                    {
-                        "expr": "topk(5, histogram_quantile(0.99, sum by (uri) (rate(http_server_requests_seconds_bucket[5m]))))",
-                        "legendFormat": "{{uri}}",
-                        "refId": "A",
-                        "format": "table"
-                    }
-                ],
-                "options": {
-                    "showHeader": true
-                },
-                "fieldConfig": {
-                    "defaults": {
-                        "unit": "s",
-                        "custom": {
-                            "align": "left"
-                        }
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "blue"
+                            },
+                            {
+                                "value": 10,
+                                "color": "green"
+                            },
+                            {
+                                "value": 100,
+                                "color": "yellow"
+                            }
+                        ]
                     }
                 }
             }
-        ]
-    }
+        },
+        {
+            "id": 2,
+            "type": "stat",
+            "title": "Payment Success Rate (24h)",
+            "gridPos": {
+                "x": 6,
+                "y": 0,
+                "w": 6,
+                "h": 4
+            },
+            "targets": [
+                {
+                    "expr": "100 * (sum(increase(payment_completed_total[24h])) / clamp_min(sum(increase(payment_completed_total[24h])) + sum(increase(payment_failed_total[24h])), 1))",
+                    "legendFormat": "Success %",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "percent",
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "red"
+                            },
+                            {
+                                "value": 95,
+                                "color": "yellow"
+                            },
+                            {
+                                "value": 99,
+                                "color": "green"
+                            }
+                        ]
+                    },
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 3,
+            "type": "stat",
+            "title": "Total Payments (24h)",
+            "gridPos": {
+                "x": 12,
+                "y": 0,
+                "w": 6,
+                "h": 4
+            },
+            "targets": [
+                {
+                    "expr": "sum(increase(payment_completed_total[24h]))",
+                    "legendFormat": "Payments",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short",
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "green"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 4,
+            "type": "stat",
+            "title": "Email Delivery Success (24h)",
+            "gridPos": {
+                "x": 18,
+                "y": 0,
+                "w": 6,
+                "h": 4
+            },
+            "targets": [
+                {
+                    "expr": "100 * (sum(increase(email_sent_success_total[24h])) / clamp_min(sum(increase(email_sent_success_total[24h])) + sum(increase(email_sent_failed_total[24h])), 1))",
+                    "legendFormat": "Success %",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "percent",
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "red"
+                            },
+                            {
+                                "value": 90,
+                                "color": "yellow"
+                            },
+                            {
+                                "value": 95,
+                                "color": "green"
+                            }
+                        ]
+                    },
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 5,
+            "type": "timeseries",
+            "title": "User Registration Trend",
+            "gridPos": {
+                "x": 0,
+                "y": 4,
+                "w": 12,
+                "h": 8
+            },
+            "targets": [
+                {
+                    "expr": "rate(user_registered_total[5m]) * 60",
+                    "legendFormat": "Registrations per minute",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short",
+                    "custom": {
+                        "drawStyle": "line",
+                        "lineInterpolation": "smooth",
+                        "fillOpacity": 10
+                    }
+                }
+            }
+        },
+        {
+            "id": 6,
+            "type": "timeseries",
+            "title": "User Login Activity",
+            "gridPos": {
+                "x": 12,
+                "y": 4,
+                "w": 12,
+                "h": 8
+            },
+            "targets": [
+                {
+                    "expr": "rate(user_login_success_total[5m]) * 60",
+                    "legendFormat": "Successful Logins",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    }
+                },
+                {
+                    "expr": "rate(user_login_failed_total[5m]) * 60",
+                    "legendFormat": "Failed Logins",
+                    "refId": "B",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short",
+                    "custom": {
+                        "drawStyle": "line",
+                        "lineInterpolation": "smooth"
+                    }
+                }
+            }
+        },
+        {
+            "id": 7,
+            "type": "timeseries",
+            "title": "Payment Processing Rate",
+            "gridPos": {
+                "x": 0,
+                "y": 12,
+                "w": 12,
+                "h": 8
+            },
+            "targets": [
+                {
+                    "expr": "rate(payment_completed_total[5m]) * 60",
+                    "legendFormat": "Successful Payments/min",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    }
+                },
+                {
+                    "expr": "rate(payment_failed_total[5m]) * 60",
+                    "legendFormat": "Failed Payments/min",
+                    "refId": "B",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short",
+                    "custom": {
+                        "drawStyle": "line",
+                        "lineInterpolation": "smooth"
+                    }
+                }
+            }
+        },
+        {
+            "id": 8,
+            "type": "piechart",
+            "title": "Payment Status Distribution (24h)",
+            "gridPos": {
+                "x": 12,
+                "y": 12,
+                "w": 6,
+                "h": 8
+            },
+            "targets": [
+                {
+                    "expr": "sum(increase(payment_completed_total[24h]))",
+                    "legendFormat": "Completed",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    }
+                },
+                {
+                    "expr": "sum(increase(payment_failed_total[24h]))",
+                    "legendFormat": "Failed",
+                    "refId": "B",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    }
+                },
+                {
+                    "expr": "sum(increase(payment_pending_total[24h]))",
+                    "legendFormat": "Pending",
+                    "refId": "C",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    }
+                }
+            ],
+            "options": {
+                "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom"
+                }
+            }
+        },
+        {
+            "id": 9,
+            "type": "stat",
+            "title": "Maintenance Reminders Sent (24h)",
+            "gridPos": {
+                "x": 18,
+                "y": 12,
+                "w": 6,
+                "h": 4
+            },
+            "targets": [
+                {
+                    "expr": "sum(increase(scheduler_maintenance_reminder_total[24h]))",
+                    "legendFormat": "Reminders",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short",
+                    "color": {
+                        "mode": "palette-classic"
+                    }
+                }
+            }
+        },
+        {
+            "id": 10,
+            "type": "stat",
+            "title": "Warranty Alerts Sent (24h)",
+            "gridPos": {
+                "x": 18,
+                "y": 16,
+                "w": 6,
+                "h": 4
+            },
+            "targets": [
+                {
+                    "expr": "sum(increase(scheduler_warranty_reminder_total[24h]))",
+                    "legendFormat": "Alerts",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short",
+                    "color": {
+                        "mode": "palette-classic"
+                    }
+                }
+            }
+        },
+        {
+            "id": 11,
+            "type": "timeseries",
+            "title": "Kafka Event Processing Rate",
+            "gridPos": {
+                "x": 0,
+                "y": 20,
+                "w": 12,
+                "h": 8
+            },
+            "targets": [
+                {
+                    "expr": "rate(kafka_consumer_records_consumed_total{topic=\"payment-completed\"}[5m])",
+                    "legendFormat": "Payment Events",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    }
+                },
+                {
+                    "expr": "rate(kafka_consumer_records_consumed_total{topic=\"maintenance-reminder\"}[5m])",
+                    "legendFormat": "Maintenance Events",
+                    "refId": "B",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    }
+                },
+                {
+                    "expr": "rate(kafka_consumer_records_consumed_total{topic=\"warranty-reminder\"}[5m])",
+                    "legendFormat": "Warranty Events",
+                    "refId": "C",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short",
+                    "custom": {
+                        "drawStyle": "line",
+                        "lineInterpolation": "smooth"
+                    }
+                }
+            }
+        },
+        {
+            "id": 12,
+            "type": "timeseries",
+            "title": "Email Delivery Performance",
+            "gridPos": {
+                "x": 12,
+                "y": 20,
+                "w": 12,
+                "h": 8
+            },
+            "targets": [
+                {
+                    "expr": "rate(email_sent_success_total[5m])",
+                    "legendFormat": "Successful",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    }
+                },
+                {
+                    "expr": "rate(email_sent_failed_total[5m])",
+                    "legendFormat": "Failed",
+                    "refId": "B",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short",
+                    "custom": {
+                        "drawStyle": "line",
+                        "lineInterpolation": "smooth"
+                    }
+                }
+            }
+        },
+        {
+            "id": 13,
+            "type": "table",
+            "title": "Top 5 Endpoints by Traffic (24h)",
+            "gridPos": {
+                "x": 0,
+                "y": 28,
+                "w": 12,
+                "h": 6
+            },
+            "targets": [
+                {
+                    "expr": "topk(5, sum by (uri) (increase(http_server_requests_seconds_count[24h])))",
+                    "legendFormat": "{{uri}}",
+                    "refId": "A",
+                    "format": "table",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    }
+                }
+            ],
+            "options": {
+                "showHeader": true
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "align": "left"
+                    }
+                }
+            }
+        },
+        {
+            "id": 14,
+            "type": "table",
+            "title": "Slowest Endpoints (P99 Latency)",
+            "gridPos": {
+                "x": 12,
+                "y": 28,
+                "w": 12,
+                "h": 6
+            },
+            "targets": [
+                {
+                    "expr": "topk(5, histogram_quantile(0.99, sum by (uri) (rate(http_server_requests_seconds_bucket[5m]))))",
+                    "legendFormat": "{{uri}}",
+                    "refId": "A",
+                    "format": "table",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    }
+                }
+            ],
+            "options": {
+                "showHeader": true
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "s",
+                    "custom": {
+                        "align": "left"
+                    }
+                }
+            }
+        },
+        {
+            "id": 15,
+            "type": "stat",
+            "title": "Marketplace - Active Listings (24h)",
+            "gridPos": {
+                "x": 0,
+                "y": 34,
+                "w": 6,
+                "h": 4
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    },
+                    "expr": "sum(increase(marketplace_listing_created_total[24h]))",
+                    "legendFormat": "New Listings",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short",
+                    "color": {
+                        "mode": "palette-classic"
+                    }
+                }
+            }
+        },
+        {
+            "id": 16,
+            "type": "timeseries",
+            "title": "Marketplace - Listing & Order Trend",
+            "gridPos": {
+                "x": 6,
+                "y": 34,
+                "w": 18,
+                "h": 8
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    },
+                    "expr": "rate(marketplace_listing_created_total[5m]) * 60",
+                    "legendFormat": "New Listings/min",
+                    "refId": "A"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    },
+                    "expr": "rate(marketplace_order_placed_total[5m]) * 60",
+                    "legendFormat": "Orders/min",
+                    "refId": "B"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short",
+                    "custom": {
+                        "drawStyle": "line",
+                        "lineInterpolation": "smooth"
+                    }
+                }
+            }
+        }
+    ]
 }

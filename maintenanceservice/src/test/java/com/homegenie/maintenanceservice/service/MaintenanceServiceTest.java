@@ -31,6 +31,7 @@ import static org.mockito.Mockito.*;
  * - Kafka event publishing
  */
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("null")
 class MaintenanceServiceTest {
 
     @Mock
@@ -94,10 +95,11 @@ class MaintenanceServiceTest {
         // Given
         when(restTemplate.getForObject(anyString(), eq(UserResponse.class))).thenReturn(userResponse);
         when(aiService.classifyRequest(anyString(), anyString())).thenReturn(aiResponse);
-        when(s3Service.uploadImage(anyString())).thenReturn("https://s3.amazonaws.com/image.jpg");
+        when(s3Service.uploadImage(anyString())).thenReturn(
+                new S3Service.ImageUploadResult("https://s3.amazonaws.com/image.jpg", "s3", "test.jpg", false));
         when(repository.save(any(MaintenanceRequest.class))).thenReturn(request);
         doNothing().when(emailService).notifyAdminNewRequest(anyString(), anyString(), anyString(), anyString(), anyLong());
-        doNothing().when(eventPublisher).publishMaintenanceCreatedEvent(any(), any());
+        doNothing().when(eventPublisher).publishMaintenanceCreatedEvent(any());
 
         // When
         MaintenanceResponseDTO response = maintenanceService.createRequest(1L, requestDTO);
@@ -114,7 +116,7 @@ class MaintenanceServiceTest {
         verify(s3Service, times(1)).uploadImage(anyString());
         verify(repository, times(1)).save(any(MaintenanceRequest.class));
         verify(emailService, times(1)).notifyAdminNewRequest(anyString(), anyString(), anyString(), anyString(), anyLong());
-        verify(eventPublisher, times(1)).publishMaintenanceCreatedEvent(any(), any());
+        verify(eventPublisher, times(1)).publishMaintenanceCreatedEvent(any());
     }
 
     @Test
@@ -170,7 +172,7 @@ class MaintenanceServiceTest {
         verify(emailService, times(1)).notifyTechnicianAssignment(
             anyString(), anyString(), anyString(), anyString(), anyString(), anyLong()
         );
-        verify(eventPublisher, times(1)).publishMaintenanceAssignedEvent(any(), any());
+        verify(eventPublisher, times(1)).publishMaintenanceAssignedEvent(any());
     }
 
     @Test
@@ -191,7 +193,7 @@ class MaintenanceServiceTest {
         verify(repository, times(1)).save(argThat(req ->
             req.getStatus() == Status.COMPLETED && req.getResolvedAt() != null
         ));
-        verify(eventPublisher, times(1)).publishMaintenanceStatusChangedEvent(any(), any(), any(), any());
+        verify(eventPublisher, times(1)).publishMaintenanceStatusChangedEvent(any());
     }
 
     @Test

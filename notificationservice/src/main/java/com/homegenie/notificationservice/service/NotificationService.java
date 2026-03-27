@@ -4,6 +4,7 @@ import com.homegenie.notificationservice.dto.*;
 import com.homegenie.notificationservice.model.Notification;
 import com.homegenie.notificationservice.model.Notification.*;
 import com.homegenie.notificationservice.repository.NotificationRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,6 +20,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
@@ -400,8 +402,99 @@ public class NotificationService {
     
     
 
+    @CircuitBreaker(name = "userService", fallbackMethod = "getUserDetailsFallback")
     private UserResponse getUserDetails(Long userId) {
         String url = userServiceUrl + "/api/users/" + userId;
         return restTemplate.getForObject(url, UserResponse.class);
+    }
+
+    /**
+     * Fallback when User Service is unavailable.
+     * Returns a minimal stub so notification pipeline degrades gracefully.
+     */
+    @SuppressWarnings("unused") // invoked by Resilience4j AOP
+    private UserResponse getUserDetailsFallback(Long userId, Exception ex) {
+        log.warn("Circuit breaker OPEN for User Service. userId={}, cause={}", userId, ex.getMessage());
+        UserResponse stub = new UserResponse();
+        stub.setId(userId);
+        stub.setFullName("HomeGenie User");
+        stub.setEmail("no-reply@homegenie.com");
+        return stub;
+    }
+
+    /**
+     * Send maintenance reminder email to the item owner.
+     * Triggered by a message on the 'maintenance-reminder' Kafka topic.
+     */
+    @Async
+    @Transactional
+    public void sendMaintenanceReminder(com.homegenie.notificationservice.dto.MaintenanceReminderEvent event) {
+        log.info("🔧 Sending maintenance reminder: itemId={}, urgency={}", event.getItemId(), event.getUrgencyLevel());
+        try {
+            String subject = "Maintenance Reminder: " + event.getItemName() + " — HomeGenie";
+            String htmlContent = String.format(
+                "<p>Hi %s,</p><p>Your item <b>%s</b> (%s) is due for maintenance.</p>"
+                + "<p><b>Status:</b> %s</p><p><b>Next maintenance date:</b> %s</p>"
+                + "<p>Please schedule a service via the HomeGenie app.</p>",
+                event.getUserName(), event.getItemName(), event.getItemCategory(),
+                event.getUrgencyLevel(), event.getNextMaintenanceDate());
+
+            Notification notification = Notification.builder()
+                    .type(NotificationType.MAINTENANCE_REMINDER)
+                    .channel(NotificationChannel.EMAIL)
+                    .status(NotificationStatus.PENDING)
+                    .recipient(event.getUserEmail())
+                    .recipientName(event.getUserName())
+                    .subject(subject)
+                    .htmlContent(htmlContent)
+                    .userId(event.getUserId())
+                    .templateId("maintenance-reminder")
+                    .eventId(event.getEventId())   // stored for idempotency
+                    .maxRetries(maxRetryAttempts)
+                    .build();
+
+            notification = notificationRepository.save(notification);
+            sendNotification(notification);
+        } catch (Exception e) {
+            log.error("Failed to send maintenance reminder: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Send warranty expiry alert email to the item owner.
+     * Triggered by a message on the 'warranty-reminder' Kafka topic.
+     */
+    @Async
+    @Transactional
+    public void sendWarrantyExpiryAlert(com.homegenie.notificationservice.dto.WarrantyExpiringEvent event) {
+        log.info("📋 Sending warranty expiry alert: itemId={}, urgency={}", event.getItemId(), event.getUrgencyLevel());
+        try {
+            String subject = "Warranty Alert: " + event.getItemName() + " expires soon — HomeGenie";
+            String htmlContent = String.format(
+                "<p>Hi %s,</p><p>The warranty for your <b>%s %s</b> (%s) is expiring.</p>"
+                + "<p><b>Expires:</b> %s (%d days remaining)</p>"
+                + "<p>Consider renewing or purchasing an extended warranty through HomeGenie.</p>",
+                event.getUserName(), event.getItemBrand(), event.getItemModel(), event.getItemName(),
+                event.getWarrantyExpiryDate(), event.getDaysUntilExpiry());
+
+            Notification notification = Notification.builder()
+                    .type(NotificationType.WARRANTY_EXPIRY_ALERT)
+                    .channel(NotificationChannel.EMAIL)
+                    .status(NotificationStatus.PENDING)
+                    .recipient(event.getUserEmail())
+                    .recipientName(event.getUserName())
+                    .subject(subject)
+                    .htmlContent(htmlContent)
+                    .userId(event.getUserId())
+                    .templateId("warranty-expiry")
+                    .eventId(event.getEventId())   // stored for idempotency
+                    .maxRetries(maxRetryAttempts)
+                    .build();
+
+            notification = notificationRepository.save(notification);
+            sendNotification(notification);
+        } catch (Exception e) {
+            log.error("Failed to send warranty expiry alert: {}", e.getMessage(), e);
+        }
     }
 }

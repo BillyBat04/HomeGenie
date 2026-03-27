@@ -3,7 +3,6 @@ package com.homegenie.paymentservice.service;
 import com.homegenie.paymentservice.dto.InvoiceRequest;
 import com.homegenie.paymentservice.dto.InvoiceResponse;
 import com.homegenie.paymentservice.model.Invoice;
-import com.homegenie.paymentservice.repository.InvoiceRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,13 +22,11 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
+@SuppressWarnings("null")
 class InvoiceServiceIntegrationTest {
 
     @Autowired
     private InvoiceService invoiceService;
-
-    @Autowired
-    private InvoiceRepository invoiceRepository;
 
     @Test
     void testCreateInvoice_Success() {
@@ -101,7 +98,7 @@ class InvoiceServiceIntegrationTest {
         invoiceService.sendInvoice(created.getId());
 
         // When
-        InvoiceResponse paid = invoiceService.markAsPaid(created.getId(), 1L);
+        InvoiceResponse paid = invoiceService.markInvoiceAsPaid(created.getId(), 1L);
 
         // Then
         assertEquals(Invoice.InvoiceStatus.PAID, paid.getStatus());
@@ -142,7 +139,7 @@ class InvoiceServiceIntegrationTest {
         request.setUserId(1L);
         request.setRequestId(12L);
         request.setSubtotal(new BigDecimal("100.00"));
-        request.setDueDate(LocalDateTime.now().minusDays(1)); // Past due
+        request.setDueAt(LocalDateTime.now().minusDays(1)); // Past due
 
         InvoiceResponse created = invoiceService.createInvoice(request);
         invoiceService.sendInvoice(created.getId());

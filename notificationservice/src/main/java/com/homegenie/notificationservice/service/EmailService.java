@@ -57,6 +57,7 @@ public class EmailService {
         }
     }
 
+    @SuppressWarnings("null")
     private void sendViaSMTP(String to, String subject, String htmlBody) throws MessagingException {
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");

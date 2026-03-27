@@ -30,7 +30,10 @@ spec:
               protocol: TCP
           env:
             - name: DATABASE_URL
-              value: "postgresql://postgres:postgres@postgres-service:5432/postgres"
+              valueFrom:
+                secretKeyRef:
+                  name: pgbouncer-secret
+                  key: database-url
             - name: POOL_MODE
               value: "transaction"
             - name: MAX_CLIENT_CONN

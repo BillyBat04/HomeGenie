@@ -1,5 +1,6 @@
 package com.homegenie.gateway.filter;
 
+import com.homegenie.gateway.config.PublicRoutesConfig;
 import com.homegenie.gateway.security.JwtTokenProvider;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
@@ -12,27 +13,20 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
-/**
- * JWT Authentication Filter for API Gateway
- * 
- * Responsibilities:
- * - Validate JWT tokens
- * - Extract user information
- * - Add identity headers (X-User-Id, X-User-Role, X-User-Email)
- * - Add correlation ID (X-Request-Id)
- * - Skip validation for public routes
- */
 @Slf4j
 @Component
 public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAuthenticationFilter.Config> {
-    
+
     private final JwtTokenProvider jwtTokenProvider;
-    
-    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
+    private final PublicRoutesConfig publicRoutesConfig;
+
+    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, PublicRoutesConfig publicRoutesConfig) {
         super(Config.class);
         this.jwtTokenProvider = jwtTokenProvider;
+        this.publicRoutesConfig = publicRoutesConfig;
     }
     
     @Override
@@ -71,18 +65,17 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
                 String userId = jwtTokenProvider.getUserIdFromToken(token);
                 String role = jwtTokenProvider.getRoleFromToken(token);
                 String email = jwtTokenProvider.getEmailFromToken(token);
-                
-                // Add headers for downstream services
+
                 ServerHttpRequest modifiedRequest = request.mutate()
-                    .header("X-User-Id", userId)
-                    .header("X-User-Role", role)
-                    .header("X-User-Email", email)
+                    .header("X-User-Id", userId != null ? userId : "")
+                    .header("X-User-Role", role != null ? role : "")
+                    .header("X-User-Email", email != null ? email : "")
                     .header("X-Request-Id", requestId)
                     .build();
-                
-                log.info("Authenticated request: userId={}, role={}, path={}, requestId={}", 
+
+                log.info("Authenticated request: userId={}, role={}, path={}, requestId={}",
                     userId, role, path, requestId);
-                
+
                 return chain.filter(exchange.mutate().request(modifiedRequest).build());
                 
             } catch (Exception e) {
@@ -92,13 +85,8 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
         };
     }
     
-    /**
-     * Check if route is public (no authentication required)
-     */
     private boolean isPublicRoute(String path) {
-        return path.equals("/api/users/register") ||
-               path.equals("/api/users/login") ||
-               path.startsWith("/actuator/");
+        return publicRoutesConfig.isPublicRoute(path);
     }
     
     /**
@@ -112,28 +100,22 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
         return null;
     }
     
-    /**
-     * Handle authentication errors
-     */
+    @SuppressWarnings("null")
     private Mono<Void> onError(ServerWebExchange exchange, String message, HttpStatus status) {
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(status);
         response.getHeaders().add(HttpHeaders.CONTENT_TYPE, "application/json");
-        
-        String errorBody = String.format("{\"error\":\"%s\",\"message\":\"%s\"}", 
+
+        String errorBody = String.format("{\"error\":\"%s\",\"message\":\"%s\"}",
             status.getReasonPhrase(), message);
-        
+
         log.error("Authentication error: {} - {}", status, message);
-        
+
         return response.writeWith(
-            Mono.just(response.bufferFactory().wrap(errorBody.getBytes()))
+            Mono.just(response.bufferFactory().wrap(errorBody.getBytes(StandardCharsets.UTF_8)))
         );
     }
     
-    /**
-     * Configuration class for filter
-     */
     public static class Config {
-        // Configuration properties can be added here if needed
     }
 }

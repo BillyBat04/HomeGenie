@@ -25,6 +25,9 @@ public class InvoiceRequest {
     
     @Schema(description = "Tax amount", example = "12.00")
     private BigDecimal tax = BigDecimal.ZERO;
+
+    @Schema(description = "Late fee amount", example = "10.00")
+    private BigDecimal lateFee = BigDecimal.ZERO;
     
     @Schema(description = "Invoice description", example = "Plumbing repair service")
     private String description;

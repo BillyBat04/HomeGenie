@@ -1,0 +1,52 @@
+---
+# Namespace for all HomeGenie application workloads
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: homegenie
+  labels:
+    app.kubernetes.io/part-of: homegenie
+---
+# Namespace for monitoring stack (Prometheus, Grafana)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    app.kubernetes.io/part-of: homegenie
+---
+# ResourceQuota: caps total CPU/memory/pod count the homegenie namespace can consume.
+# Without this, a single runaway pod can starve all other services on the same node.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: homegenie-quota
+  namespace: homegenie
+spec:
+  hard:
+    requests.cpu: "8"
+    requests.memory: 16Gi
+    limits.cpu: "16"
+    limits.memory: 32Gi
+    pods: "50"
+    services: "20"
+---
+# LimitRange: provides default resource values for any container that omits them.
+# Prevents pods with no resource spec from running with unlimited CPU/memory.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: homegenie-defaults
+  namespace: homegenie
+spec:
+  limits:
+    - type: Container
+      default:           # applied when limits: is absent
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:    # applied when requests: is absent
+        cpu: 100m
+        memory: 256Mi
+      max:               # hard ceiling — no container can exceed this
+        cpu: "2"
+        memory: 4Gi
