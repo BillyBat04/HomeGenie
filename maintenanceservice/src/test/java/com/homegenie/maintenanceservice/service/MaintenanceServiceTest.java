@@ -108,9 +108,9 @@ class MaintenanceServiceTest {
         assertNotNull(response);
         assertEquals(1L, response.getId());
         assertEquals("Water leaking from bathroom", response.getTitle());
-        assertEquals("PLUMBING", response.getCategory());
-        assertEquals("CRITICAL", response.getPriority());
-        assertEquals("PENDING", response.getStatus());
+        assertEquals(Category.PLUMBING, response.getCategory());
+        assertEquals(Priority.CRITICAL, response.getPriority());
+        assertEquals(Status.PENDING, response.getStatus());
 
         verify(aiService, times(1)).classifyRequest(anyString(), anyString());
         verify(s3Service, times(1)).uploadImage(anyString());
