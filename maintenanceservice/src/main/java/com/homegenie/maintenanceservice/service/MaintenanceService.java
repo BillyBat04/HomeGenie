@@ -212,8 +212,7 @@ public class MaintenanceService {
                 }
 
                 // 🔔 Publish MaintenanceAssignedEvent to Kafka AFTER commit.
-                MaintenanceRequest savedRequest = repository.save(request);
-                final MaintenanceRequest assignedRef = savedRequest;
+                final MaintenanceRequest assignedRef = request;
                 final Long assignedTo = dto.getAssignedTo();
                 afterCommit(() -> publishMaintenanceAssignedEvent(assignedRef, assignedTo));
 
@@ -459,20 +458,33 @@ public class MaintenanceService {
      * Run the given action only after the current DB transaction has committed.
      * Used for both Kafka publishing and payment calls — both must NOT run inside
      * the open transaction to avoid holding DB connections during network I/O.
+     *
+     * Guard: if no transaction is active (e.g. unit tests call the service method
+     * directly without @Transactional), run the action immediately instead of
+     * trying to register a synchronization (which would throw IllegalStateException).
      */
     private void afterCommit(Runnable action) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    action.run();
-                } catch (Exception e) {
-                    log.error("Failed to publish Kafka event after DB commit: {}", e.getMessage(), e);
-                    // The DB row exists but the Kafka message was lost.
-                    // In production you would use the Outbox pattern to guarantee delivery.
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        action.run();
+                    } catch (Exception e) {
+                        log.error("Failed to publish Kafka event after DB commit: {}", e.getMessage(), e);
+                        // The DB row exists but the Kafka message was lost.
+                        // In production you would use the Outbox pattern to guarantee delivery.
+                    }
                 }
+            });
+        } else {
+            // No active transaction — run immediately (unit test context).
+            try {
+                action.run();
+            } catch (Exception e) {
+                log.error("afterCommit action failed: {}", e.getMessage(), e);
             }
-        });
+        }
     }
 
     // =====================================================
