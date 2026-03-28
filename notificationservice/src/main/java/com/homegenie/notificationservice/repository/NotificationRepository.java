@@ -36,8 +36,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     boolean existsByEventId(String eventId);
     
     // Find notifications that need retry
-    @Query("SELECT n FROM Notification n WHERE n.status = 'FAILED' AND n.retryCount < n.maxRetries AND n.failedAt > :afterTime")
-    List<Notification> findFailedNotificationsForRetry(LocalDateTime afterTime);
+    @Query("SELECT n FROM Notification n WHERE n.status = 'FAILED' AND n.retryCount < n.maxRetries")
+    List<Notification> findFailedNotificationsForRetry();
     
     // Find pending notifications older than specified time
     @Query("SELECT n FROM Notification n WHERE n.status = 'PENDING' AND n.createdAt < :beforeTime")

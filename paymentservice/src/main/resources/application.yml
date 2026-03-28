@@ -59,6 +59,13 @@ spring:
         enable.idempotence: true     # exactly-once delivery from producer side
         max.in.flight.requests.per.connection: 1
 
+  # JWT validation — public key fetched from identity-service JWKS endpoint (RS256)
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${IDENTITY_SERVICE_URL:http://identity-service:8086}/.well-known/jwks.json
+
 # Stripe Configuration
 stripe:
   api-key: ${STRIPE_API_KEY:}

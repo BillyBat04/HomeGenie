@@ -30,25 +30,15 @@ spring:
         format_sql: true
     show-sql: false
 
-  # Redis for caching and session management
-  # SECURITY: REDIS_PASSWORD required via env var
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-      timeout: 60000
-      lettuce:
-        pool:
-          max-active: 8
-          max-idle: 8
-          min-idle: 0
+# JWT Configuration — identity-service is the single signing authority (RS256)
+# Private/public key PEM can be supplied via env vars for production. If unset,
+# an ephemeral keypair is generated at startup (dev/staging only).
+rsa:
+  private-key-pem: ${RSA_PRIVATE_KEY_PEM:}
+  public-key-pem: ${RSA_PUBLIC_KEY_PEM:}
 
-# JWT Configuration (Same as User Service for compatibility)
-# SECURITY: JWT_SECRET is REQUIRED - no default. Generate with: openssl rand -hex 32
 jwt:
-  secret: ${JWT_SECRET}
-  access-token-expiration: 86400000 # 24 hours
+  access-token-expiration: 900000 # 15 minutes
   refresh-token-expiration: 604800000 # 7 days
 
 # Platform Feature Flags

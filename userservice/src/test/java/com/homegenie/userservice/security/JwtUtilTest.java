@@ -1,5 +1,6 @@
 package com.homegenie.userservice.security;
 
+import com.nimbusds.jwt.SignedJWT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -7,236 +8,99 @@ import org.springframework.test.util.ReflectionTestUtils;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit Tests for JwtUtil
+ * Unit tests for {@link JwtUtil} — RS256 token generation.
  *
- * Test Coverage:
- * - Token generation
- * - Token validation
- * - Token expiration
- * - Email extraction from token
- * - Invalid token handling
- * - Signature validation
+ * <p>Validation is delegated to Spring Security's NimbusJwtDecoder.
+ * These tests only cover the {@code generateToken()} path.
  */
-@SuppressWarnings("null")
 class JwtUtilTest {
 
     private JwtUtil jwtUtil;
-    private static final String TEST_SECRET = "test-secret-key-must-be-at-least-256-bits-long-for-HS256-algorithm-security-requirements";
-    private static final Long TEST_EXPIRATION = 3600000L; // 1 hour
-    private static final String TEST_EMAIL = "test@example.com";
-    private static final Long TEST_USER_ID = 1L;
-    private static final String TEST_ROLE = "RESIDENT";
+
+    private static final Long TEST_EXPIRATION = 3_600_000L; // 1 hour
+    private static final String TEST_EMAIL    = "test@example.com";
+    private static final Long   TEST_USER_ID  = 1L;
+    private static final String TEST_ROLE     = "RESIDENT";
 
     @BeforeEach
-    void setUp() {
-        jwtUtil = new JwtUtil();
-        ReflectionTestUtils.setField(jwtUtil, "secret", TEST_SECRET);
-        ReflectionTestUtils.setField(jwtUtil, "expiration", TEST_EXPIRATION);
+    void setUp() throws Exception {
+        // Build a real RsaKeyConfig (generates ephemeral keypair) without Spring context
+        RsaKeyConfig rsaKeyConfig = new RsaKeyConfig();
+        ReflectionTestUtils.setField(rsaKeyConfig, "privateKeyPem", "");
+        ReflectionTestUtils.setField(rsaKeyConfig, "publicKeyPem", "");
+        rsaKeyConfig.init();
+
+        jwtUtil = new JwtUtil(rsaKeyConfig);
+        ReflectionTestUtils.setField(jwtUtil, "accessTokenExpiration", TEST_EXPIRATION);
     }
 
     @Test
-    void testGenerateToken_Success() {
-        // When
+    void generateToken_returnsValidJwtFormat() {
         String token = jwtUtil.generateToken(TEST_EMAIL, TEST_USER_ID, TEST_ROLE);
 
-        // Then
         assertNotNull(token);
-        assertTrue(token.length() > 0);
-        assertTrue(token.startsWith("eyJ")); // JWT format starts with eyJ
-
-        // Verify token parts (header.payload.signature)
         String[] parts = token.split("\\.");
-        assertEquals(3, parts.length);
+        assertEquals(3, parts.length, "JWT must have exactly three parts");
+        assertTrue(token.startsWith("eyJ"), "JWT header must be Base64-encoded JSON");
     }
 
     @Test
-    void testValidateToken_ValidToken_ReturnsTrue() {
-        // Given
+    void generateToken_containsExpectedClaims() throws Exception {
         String token = jwtUtil.generateToken(TEST_EMAIL, TEST_USER_ID, TEST_ROLE);
+        SignedJWT parsed = SignedJWT.parse(token);
 
-        // When
-        boolean isValid = jwtUtil.validateToken(token);
-
-        // Then
-        assertTrue(isValid);
+        assertEquals(TEST_EMAIL, parsed.getJWTClaimsSet().getSubject());
+        assertEquals(TEST_USER_ID.longValue(),
+                ((Number) parsed.getJWTClaimsSet().getClaim("userId")).longValue());
+        assertEquals(TEST_ROLE, parsed.getJWTClaimsSet().getStringClaim("role"));
     }
 
     @Test
-    void testValidateToken_InvalidToken_ReturnsFalse() {
-        // Given
-        String invalidToken = "invalid.token.here";
-
-        // When
-        boolean isValid = jwtUtil.validateToken(invalidToken);
-
-        // Then
-        assertFalse(isValid);
-    }
-
-    @Test
-    void testValidateToken_MalformedToken_ReturnsFalse() {
-        // Given
-        String malformedToken = "not-a-jwt-token";
-
-        // When
-        boolean isValid = jwtUtil.validateToken(malformedToken);
-
-        // Then
-        assertFalse(isValid);
-    }
-
-    @Test
-    void testValidateToken_ExpiredToken_ReturnsFalse() {
-        // Given - Create JwtUtil with short expiration
-        JwtUtil shortExpirationJwtUtil = new JwtUtil();
-        ReflectionTestUtils.setField(shortExpirationJwtUtil, "secret", TEST_SECRET);
-        ReflectionTestUtils.setField(shortExpirationJwtUtil, "expiration", -1000L); // Already expired
-
-        String expiredToken = shortExpirationJwtUtil.generateToken(TEST_EMAIL, TEST_USER_ID, TEST_ROLE);
-
-        // When
-        boolean isValid = jwtUtil.validateToken(expiredToken);
-
-        // Then
-        assertFalse(isValid);
-    }
-
-    @Test
-    void testValidateToken_TamperedToken_ReturnsFalse() {
-        // Given
-        String validToken = jwtUtil.generateToken(TEST_EMAIL, TEST_USER_ID, TEST_ROLE);
-        String tamperedToken = validToken.substring(0, validToken.length() - 5) + "AAAAA"; // Tamper with signature
-
-        // When
-        boolean isValid = jwtUtil.validateToken(tamperedToken);
-
-        // Then
-        assertFalse(isValid);
-    }
-
-    @Test
-    void testGetEmailFromToken_Success() {
-        // Given
+    void generateToken_containsExpirationAndIssuedAt() throws Exception {
         String token = jwtUtil.generateToken(TEST_EMAIL, TEST_USER_ID, TEST_ROLE);
+        SignedJWT parsed = SignedJWT.parse(token);
 
-        // When
-        String extractedEmail = jwtUtil.getEmailFromToken(token);
-
-        // Then
-        assertNotNull(extractedEmail);
-        assertEquals(TEST_EMAIL, extractedEmail);
+        assertNotNull(parsed.getJWTClaimsSet().getIssueTime());
+        assertNotNull(parsed.getJWTClaimsSet().getExpirationTime());
+        assertTrue(
+            parsed.getJWTClaimsSet().getExpirationTime()
+                  .after(parsed.getJWTClaimsSet().getIssueTime()),
+            "Expiry must be after issue time"
+        );
     }
 
     @Test
-    void testGetEmailFromToken_InvalidToken_ThrowsException() {
-        // Given
-        String invalidToken = "invalid.token.here";
+    void generateToken_usesRS256Algorithm() throws Exception {
+        String token = jwtUtil.generateToken(TEST_EMAIL, TEST_USER_ID, TEST_ROLE);
+        SignedJWT parsed = SignedJWT.parse(token);
 
-        // When & Then
-        assertThrows(Exception.class, () -> {
-            jwtUtil.getEmailFromToken(invalidToken);
-        });
+        assertEquals("RS256", parsed.getHeader().getAlgorithm().getName());
     }
 
     @Test
-    void testGenerateToken_DifferentUsersSameTime_DifferentTokens() {
-        // Given
-        String email1 = "user1@example.com";
-        String email2 = "user2@example.com";
+    void generateToken_differentUsers_produceDifferentTokens() {
+        String token1 = jwtUtil.generateToken("user1@example.com", 1L, "RESIDENT");
+        String token2 = jwtUtil.generateToken("user2@example.com", 2L, "ADMIN");
 
-        // When
-        String token1 = jwtUtil.generateToken(email1, 1L, "RESIDENT");
-        String token2 = jwtUtil.generateToken(email2, 2L, "ADMIN");
-
-        // Then
-        assertNotNull(token1);
-        assertNotNull(token2);
         assertNotEquals(token1, token2);
     }
 
     @Test
-    void testGenerateToken_SameUserDifferentTime_DifferentTokens() throws InterruptedException {
-        // Given
-        Thread.sleep(10); // Small delay to ensure different timestamps
-
-        // When
+    void generateToken_sameUserTwice_producesDifferentTokensDueToTime()
+            throws InterruptedException {
         String token1 = jwtUtil.generateToken(TEST_EMAIL, TEST_USER_ID, TEST_ROLE);
         Thread.sleep(10);
         String token2 = jwtUtil.generateToken(TEST_EMAIL, TEST_USER_ID, TEST_ROLE);
 
-        // Then
-        assertNotNull(token1);
-        assertNotNull(token2);
-        assertNotEquals(token1, token2);
+        assertNotEquals(token1, token2, "Tokens issued at different times must differ");
     }
 
     @Test
-    void testValidateToken_NullToken_ReturnsFalse() {
-        // Given
-        String nullToken = null;
-
-        // When
-        boolean isValid = jwtUtil.validateToken(nullToken);
-
-        // Then
-        assertFalse(isValid);
-    }
-
-    @Test
-    void testValidateToken_EmptyToken_ReturnsFalse() {
-        // Given
-        String emptyToken = "";
-
-        // When
-        boolean isValid = jwtUtil.validateToken(emptyToken);
-
-        // Then
-        assertFalse(isValid);
-    }
-
-    @Test
-    void testValidateToken_TokenWithDifferentSecret_ReturnsFalse() {
-        // Given - Generate token with one secret
-        String token = jwtUtil.generateToken(TEST_EMAIL, TEST_USER_ID, TEST_ROLE);
-
-        // Create new JwtUtil with different secret
-        JwtUtil differentSecretJwtUtil = new JwtUtil();
-        ReflectionTestUtils.setField(differentSecretJwtUtil, "secret", "different-secret-key-that-is-at-least-256-bits-long-for-testing-purposes-only");
-        ReflectionTestUtils.setField(differentSecretJwtUtil, "expiration", TEST_EXPIRATION);
-
-        // When
-        boolean isValid = differentSecretJwtUtil.validateToken(token);
-
-        // Then
-        assertFalse(isValid);
-    }
-
-    @Test
-    void testGenerateToken_WithSpecialCharactersInEmail_Success() {
-        // Given
+    void generateToken_withSpecialCharactersInEmail() throws Exception {
         String specialEmail = "test+user@example.co.uk";
-
-        // When
         String token = jwtUtil.generateToken(specialEmail, TEST_USER_ID, TEST_ROLE);
-        String extractedEmail = jwtUtil.getEmailFromToken(token);
 
-        // Then
-        assertNotNull(token);
-        assertEquals(specialEmail, extractedEmail);
-    }
-
-    @Test
-    void testGenerateToken_WithLongEmail_Success() {
-        // Given
-        String longEmail = "very.long.email.address.for.testing.purposes@example-domain.com";
-
-        // When
-        String token = jwtUtil.generateToken(longEmail, TEST_USER_ID, TEST_ROLE);
-        String extractedEmail = jwtUtil.getEmailFromToken(token);
-
-        // Then
-        assertNotNull(token);
-        assertEquals(longEmail, extractedEmail);
+        SignedJWT parsed = SignedJWT.parse(token);
+        assertEquals(specialEmail, parsed.getJWTClaimsSet().getSubject());
     }
 }
-
