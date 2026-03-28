@@ -5,11 +5,8 @@ import com.homegenie.userservice.dto.event.UserRegisteredEvent;
 import com.homegenie.userservice.dto.event.UserUpdatedEvent;
 import com.homegenie.userservice.model.User;
 import com.homegenie.userservice.model.UserRole;
-import com.homegenie.userservice.model.RefreshToken;
 import com.homegenie.userservice.repository.UserRepository;
-import com.homegenie.userservice.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
@@ -23,20 +20,16 @@ import java.util.stream.Collectors;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtUtil jwtUtil;
     private final UserEventPublisher eventPublisher;
-    private final RefreshTokenService refreshTokenService;
 
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public UserResponse createUser(CreateUserRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already registered");
         }
 
         User user = new User();
         user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setFullName(request.getFullName());
         user.setPhoneNumber(request.getPhoneNumber());
         user.setFlatNumber(request.getFlatNumber());
@@ -54,90 +47,8 @@ public class UserService {
         }
 
         User savedUser = userRepository.save(user);
-
         publishUserRegisteredEvent(savedUser);
-
-        String token = jwtUtil.generateToken(
-                savedUser.getEmail(),
-                savedUser.getId(),
-                savedUser.getRole().name()
-        );
-
-        RefreshToken refreshToken = refreshTokenService.createRefreshToken(savedUser.getId());
-
-        AuthResponse response = new AuthResponse();
-        response.setToken(token);
-        response.setRefreshToken(refreshToken.getToken());
-        response.setEmail(savedUser.getEmail());
-        response.setFullName(savedUser.getFullName());
-        response.setRole(savedUser.getRole().name());
-        response.setUserId(savedUser.getId());
-        response.setSpecialty(savedUser.getSpecialty());
-
-        return response;
-    }
-
-    public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Invalid credentials"));
-
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid credentials");
-        }
-
-        if (!user.isActive()) {
-            throw new RuntimeException("Account is deactivated");
-        }
-
-        String token = jwtUtil.generateToken(
-                user.getEmail(),
-                user.getId(),
-                user.getRole().name()
-        );
-
-        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getId());
-
-        AuthResponse response = new AuthResponse();
-        response.setToken(token);
-        response.setRefreshToken(refreshToken.getToken());
-        response.setEmail(user.getEmail());
-        response.setFullName(user.getFullName());
-        response.setRole(user.getRole().name());
-        response.setUserId(user.getId());
-        response.setSpecialty(user.getSpecialty());
-
-        return response;
-    }
-
-    @Transactional
-    public AuthResponse refreshToken(String refreshTokenString) {
-        RefreshToken refreshToken = refreshTokenService.findByToken(refreshTokenString)
-                .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
-
-        refreshTokenService.verifyExpiration(refreshToken);
-
-        User user = userRepository.findById(refreshToken.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        String newAccessToken = jwtUtil.generateToken(
-                user.getEmail(),
-                user.getId(),
-                user.getRole().name()
-        );
-
-        RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(user.getId());
-        refreshTokenService.revokeToken(refreshTokenString);
-
-        AuthResponse response = new AuthResponse();
-        response.setToken(newAccessToken);
-        response.setRefreshToken(newRefreshToken.getToken());
-        response.setEmail(user.getEmail());
-        response.setFullName(user.getFullName());
-        response.setRole(user.getRole().name());
-        response.setUserId(user.getId());
-        response.setSpecialty(user.getSpecialty());
-
-        return response;
+        return mapToUserResponse(savedUser);
     }
 
     public UserResponse getUserById(Long id) {
@@ -159,6 +70,32 @@ public class UserService {
                 .stream()
                 .map(this::mapToUserResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public UserResponse updateUser(Long id, UpdateUserRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (request.getFullName() != null) {
+            user.setFullName(request.getFullName());
+        }
+        if (request.getPhoneNumber() != null) {
+            user.setPhoneNumber(request.getPhoneNumber());
+        }
+        if (request.getFlatNumber() != null) {
+            user.setFlatNumber(request.getFlatNumber());
+        }
+        if (user.getRole() == UserRole.TECHNICIAN && request.getSpecialty() != null) {
+            user.setSpecialty(request.getSpecialty());
+        }
+        if (request.getEmailNotificationsEnabled() != null) {
+            user.setEmailNotificationsEnabled(request.getEmailNotificationsEnabled());
+        }
+
+        User savedUser = userRepository.save(user);
+        publishUserUpdatedEvent(savedUser, "PROFILE_UPDATE");
+        return mapToUserResponse(savedUser);
     }
 
     private UserResponse mapToUserResponse(User user) {

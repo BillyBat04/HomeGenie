@@ -24,13 +24,14 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(nullable = false)
+    // Credentials managed by identity-service — nullable post-migration V2
+    @Column(nullable = true)
     private String password;
 
     @Column(nullable = false)
     private String fullName;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String phoneNumber;
 
     private String flatNumber;

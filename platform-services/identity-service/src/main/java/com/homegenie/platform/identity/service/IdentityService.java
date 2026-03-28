@@ -13,15 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Identity Service - Core authentication and user management
- * ✅ IDENTICAL logic to User Service
- * 
- * Responsibilities:
- * - User registration
- * - User authentication
- * - User information retrieval
- */
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -33,20 +25,15 @@ public class IdentityService {
     private final JwtUtil jwtUtil;
     private final TokenService tokenService;
 
-    /**
-     * Register new user
-     * ✅ Compatible with User Service register logic
-     */
+
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         log.info("Registering new user: email={}, role={}", request.getEmail(), request.getRole());
-        
-        // Check if email already exists
+
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new EmailAlreadyExistsException(request.getEmail());
         }
 
-        // Create new user
         User user = new User();
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -54,7 +41,6 @@ public class IdentityService {
         user.setPhoneNumber(request.getPhoneNumber());
         user.setFlatNumber(request.getFlatNumber());
 
-        // Set role
         if (request.getRole() != null && !request.getRole().isEmpty()) {
             try {
                 user.setRole(UserRole.valueOf(request.getRole().toUpperCase()));
@@ -64,7 +50,6 @@ public class IdentityService {
             }
         }
 
-        // Set specialty for technicians
         if (user.getRole() == UserRole.TECHNICIAN && request.getTechnicianSpecialty() != null) {
             user.setSpecialty(request.getTechnicianSpecialty());
         }
@@ -72,14 +57,12 @@ public class IdentityService {
         User savedUser = userRepository.save(user);
         log.info("User registered successfully: userId={}, email={}", savedUser.getId(), savedUser.getEmail());
 
-        // Generate JWT token
         String token = jwtUtil.generateToken(
                 savedUser.getEmail(),
                 savedUser.getId(),
                 savedUser.getRole().name()
         );
 
-        // Generate refresh token
         RefreshToken refreshToken = tokenService.createRefreshToken(savedUser.getId());
 
         return AuthResponse.builder()
@@ -94,24 +77,18 @@ public class IdentityService {
                 .build();
     }
 
-    /**
-     * Authenticate user (login)
-     * ✅ Compatible with User Service login logic
-     */
+
     public AuthResponse authenticate(LoginRequest request) {
         log.info("Authenticating user: email={}", request.getEmail());
-        
-        // Find user by email
+
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new InvalidCredentialsException());
 
-        // Check password
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             log.warn("Invalid password attempt for user: email={}", request.getEmail());
             throw new InvalidCredentialsException();
         }
 
-        // Check if account is active
         if (!user.isActive()) {
             log.warn("Inactive account login attempt: email={}", request.getEmail());
             throw new AccountInactiveException();
@@ -119,14 +96,12 @@ public class IdentityService {
 
         log.info("User authenticated successfully: userId={}, email={}", user.getId(), user.getEmail());
 
-        // Generate JWT token
         String token = jwtUtil.generateToken(
                 user.getEmail(),
                 user.getId(),
                 user.getRole().name()
         );
 
-        // Generate refresh token
         RefreshToken refreshToken = tokenService.createRefreshToken(user.getId());
 
         return AuthResponse.builder()
@@ -141,10 +116,7 @@ public class IdentityService {
                 .build();
     }
 
-    /**
-     * Get user by ID
-     * ✅ Compatible with User Service getUserById logic
-     */
+ 
     public UserResponse getUserById(Long userId) {
         log.info("Fetching user by ID: userId={}", userId);
         
@@ -163,10 +135,7 @@ public class IdentityService {
                 .build();
     }
 
-    /**
-     * Get user by email
-     * For internal use (e.g., token validation)
-     */
+
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException(email));
