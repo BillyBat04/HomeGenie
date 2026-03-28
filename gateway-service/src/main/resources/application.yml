@@ -41,15 +41,15 @@ gateway:
         max-header-size: 32KB
       routes:
         - id: user-service-auth
-          uri: ${USER_SERVICE_URL:http://user-service:8081}
+          uri: ${IDENTITY_SERVICE_URL:http://identity-service:8086}
           predicates:
             - Path=/api/auth/**
           filters:
-            - ShadowModeFilter
+            - RewritePath=/api/auth/(?<segment>.*), /platform/identity/v1/${segment}
             - name: CircuitBreaker
               args:
-                name: user-service
-                fallbackUri: forward:/fallback/user-service
+                name: identity-service
+                fallbackUri: forward:/fallback/identity-service
             - name: RequestRateLimiter
               args:
                 redis-rate-limiter.replenishRate: 10

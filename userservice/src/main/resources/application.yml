@@ -68,14 +68,8 @@ kafka:
   topics:
     user-events: user-events
 
-# RSA keypair for RS256 JWT signing.
-# In production supply PEM values via env vars. In dev an ephemeral key is auto-generated.
-rsa:
-  private-key-pem: ${RSA_PRIVATE_KEY_PEM:}
-  public-key-pem: ${RSA_PUBLIC_KEY_PEM:}
-
-jwt:
-  access-token-expiration: ${JWT_EXPIRATION:86400000}
+# RSA key pair removed — userservice no longer signs tokens.
+# JWT validation uses identity-service JWKS endpoint (see spring.security.oauth2.resourceserver.jwt.jwk-set-uri).
 
 logging:
   level:

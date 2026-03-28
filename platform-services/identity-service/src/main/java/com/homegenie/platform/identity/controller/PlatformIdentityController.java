@@ -78,7 +78,8 @@ public class PlatformIdentityController {
      * Authenticate user (Platform API)
      * ✅ Compatible with: POST /api/auth/login (User Service)
      */
-    @PostMapping("/authenticate")
+    // /login alias kept for backward compatibility with clients that used userservice /api/auth/login
+    @PostMapping({"/authenticate", "/login"})
     @Operation(
         summary = "Authenticate user (Platform API)",
         description = "Authenticate user with email and password. Returns JWT access token and refresh token."
