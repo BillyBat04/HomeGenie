@@ -10,10 +10,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
 
-/**
- * OpenAPI (Swagger) Configuration
- * API documentation for Identity Platform Service
- */
+
 @Configuration
 public class OpenApiConfig {
 

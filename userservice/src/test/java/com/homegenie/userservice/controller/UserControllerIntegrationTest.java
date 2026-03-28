@@ -76,7 +76,7 @@ public class UserControllerIntegrationTest {
     @Test
     void createUser_DuplicateEmail_Returns500() throws Exception {
         CreateUserRequest request = new CreateUserRequest();
-        request.setEmail("admin@example.com"); // already exists
+        request.setEmail("admin@example.com"); 
         request.setFullName("Duplicate");
 
         mockMvc.perform(post("/api/users")

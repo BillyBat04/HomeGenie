@@ -40,7 +40,7 @@ public class Notification {
 
     @Schema(description = "Recipient email or phone", example = "user@example.com")
     @Column(nullable = false)
-    private String recipient; // Email or phone number
+    private String recipient; 
 
     @Schema(description = "Recipient name", example = "John Doe")
     private String recipientName;
@@ -57,7 +57,7 @@ public class Notification {
     @Column(name = "html_content", columnDefinition = "TEXT")
     private String htmlContent;
 
-    // Related entities
+    
     @Schema(description = "User ID", example = "1001")
     private Long userId;
     
@@ -75,27 +75,21 @@ public class Notification {
     @Schema(description = "Invoice ID", example = "4001")
     private Long invoiceId;
 
-    // Template reference
+    
     @Schema(description = "Email template ID", example = "payment-confirmation")
     private String templateId;
 
-    /**
-     * Idempotency key — stores the eventId from the Kafka message.
-     * Before saving a new notification we check if one with this eventId already exists.
-     * This prevents duplicate emails when Kafka re-delivers a message (at-least-once delivery).
-     * Example: Kafka consumer crashes after processing but before committing offset →
-     *          Kafka retries → without this check the email would be sent twice.
-     */
+    
     @Schema(description = "Kafka event ID used for idempotency", example = "550e8400-e29b-41d4-a716-446655440000")
     @Column(name = "event_id", unique = true)
     private String eventId;
 
-    // Metadata
+    
     @Schema(description = "Additional metadata in JSON", example = "{\"amount\": 150}")
     @Column(columnDefinition = "TEXT")
-    private String metadata; // JSON string for additional data
+    private String metadata; 
 
-    // Retry tracking
+    
     @Schema(description = "Current retry count", example = "0")
     @Builder.Default
     private Integer retryCount = 0;
@@ -108,7 +102,7 @@ public class Notification {
     @Column(columnDefinition = "TEXT")
     private String errorMessage;
 
-    // Timestamps
+    
     @Schema(description = "Creation timestamp", example = "2024-01-15T10:00:00")
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -152,7 +146,7 @@ public class Notification {
         }
     }
 
-    // Enums
+    
     public enum NotificationType {
         PAYMENT_CONFIRMATION,
         PAYMENT_FAILED,

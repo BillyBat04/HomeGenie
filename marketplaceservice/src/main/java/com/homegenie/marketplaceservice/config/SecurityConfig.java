@@ -14,22 +14,13 @@ import org.springframework.security.web.SecurityFilterChain;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * Security configuration for Marketplace Service.
- *
- * JWT validation is handled automatically by Spring Security using the public key
- * fetched from identity-service's JWKS endpoint
- * ({@code spring.security.oauth2.resourceserver.jwt.jwk-set-uri}).
- * No shared secret is needed.
- */
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    /**
-     * Maps the custom "role" claim (e.g. "ADMIN") to a Spring GrantedAuthority.
-     */
+    
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
@@ -64,7 +55,7 @@ public class SecurityConfig {
                 ).permitAll()
                 .anyRequest().authenticated()
             )
-            // Spring Security fetches the RSA public key from jwk-set-uri automatically
+            
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
 

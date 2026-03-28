@@ -7,14 +7,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
 
-/**
- * RestTemplate Configuration
- * 
- * Configured for calling external services:
- * - Payment Platform API (port 8083)
- * - Notification Platform API (port 8084)
- * - User Service API (port 8081)
- */
+
 @Configuration
 public class RestTemplateConfig {
 

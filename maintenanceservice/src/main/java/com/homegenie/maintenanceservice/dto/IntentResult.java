@@ -10,8 +10,8 @@ import lombok.NoArgsConstructor;
 public class IntentResult {
     private VoiceIntent intent;
     private Double confidence;
-    private MaintenanceRequestDTO extractedData;  // Extracted maintenance data
-    private Long ticketId;  // For status queries
+    private MaintenanceRequestDTO extractedData;  
+    private Long ticketId;  
     private boolean isEmergency;
     private String additionalInfo;
 }

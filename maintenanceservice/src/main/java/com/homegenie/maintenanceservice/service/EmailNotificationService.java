@@ -22,8 +22,8 @@ public class EmailNotificationService {
 
     private final JavaMailSender mailSender;
 
-    // 🔧 Common properties
-    @Value("${email.provider:smtp}") // default = smtp
+    
+    @Value("${email.provider:smtp}") 
     private String emailProvider;
 
     @Value("${spring.mail.username:no-reply@homegenie.com}")

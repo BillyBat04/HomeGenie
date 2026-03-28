@@ -7,11 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.util.Map;
 
-/**
- * Notification Platform API Request DTO
- * 
- * For sending emails via Notification Service
- */
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -19,11 +15,11 @@ import java.util.Map;
 public class NotificationRequest {
     private Long userId;
     private String miniAppId;
-    private String type; // EMAIL, SMS, PUSH
+    private String type; 
     private String templateId;
     private String recipientEmail;
     private String subject;
     private String body;
     private Map<String, Object> templateData;
-    private String priority; // HIGH, NORMAL, LOW
+    private String priority; 
 }

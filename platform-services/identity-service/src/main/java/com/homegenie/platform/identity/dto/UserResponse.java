@@ -5,10 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * User Response DTO
- * ✅ IDENTICAL to User Service UserResponse
- */
+
 @Data
 @Builder
 @AllArgsConstructor

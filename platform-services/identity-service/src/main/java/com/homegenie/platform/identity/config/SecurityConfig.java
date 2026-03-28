@@ -18,14 +18,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Security Configuration for Identity Platform Service
- *
- * - Stateless JWT-based authentication
- * - CORS enabled for frontend
- * - Public endpoints: register, login, refresh, logout, health
- * - Protected endpoints (require valid Bearer JWT): /users/{id}
- */
+
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -41,9 +34,9 @@ public class SecurityConfig {
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Public — no token required
+                
                 .requestMatchers(
-                    "/.well-known/jwks.json",   // JWKS — public key for all services
+                    "/.well-known/jwks.json",   
                     "/platform/identity/v1/register",
                     "/platform/identity/v1/authenticate",
                     "/platform/identity/v1/refresh",
@@ -54,10 +47,10 @@ public class SecurityConfig {
                     "/platform/identity/v1/swagger-ui/**",
                     "/platform/identity/v1/swagger-ui.html"
                 ).permitAll()
-                // Protected — caller must send a valid Bearer JWT
+                
                 .anyRequest().authenticated()
             )
-            // Verify the Bearer JWT token on every protected request
+            
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> jwt.decoder(jwtDecoder()))
             );
@@ -65,11 +58,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /**
-     * Decode and verify incoming JWT tokens using the RSA public key.
-     * The private key lives only in identity-service; services fetch the
-     * public key from /.well-known/jwks.json.
-     */
+    
     @Bean
     public JwtDecoder jwtDecoder() {
         return NimbusJwtDecoder.withPublicKey(rsaKeyConfig.getPublicKey()).build();

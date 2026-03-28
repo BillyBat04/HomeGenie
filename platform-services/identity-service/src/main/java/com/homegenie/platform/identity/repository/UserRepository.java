@@ -8,11 +8,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 import java.util.List;
 
-/**
- * User Repository
- * ✅ IDENTICAL to User Service UserRepository
- * Queries shared database table: users
- */
+
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
     

@@ -55,7 +55,7 @@ public class PaymentResponse {
     @Schema(description = "Payment completion time", example = "2024-01-15T10:35:00")
     private LocalDateTime paidAt;
     
-    // Client secret for Stripe frontend
+    
     @Schema(description = "Stripe client secret", example = "pi_1234567890_secret_abcdef")
     private String clientSecret;
     

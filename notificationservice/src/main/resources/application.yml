@@ -45,7 +45,7 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+        "[format_sql]": true
 
   # Email Configuration (SMTP)
   mail:
@@ -168,9 +168,9 @@ resilience4j:
 # Logging
 logging:
   level:
-    com.homegenie.notificationservice: INFO
-    org.springframework.kafka: INFO
-    org.springframework.mail: DEBUG
+    "[com.homegenie.notificationservice]": INFO
+    "[org.springframework.kafka]": INFO
+    "[org.springframework.mail]": DEBUG
 
 # SpringDoc OpenAPI Configuration
 springdoc:

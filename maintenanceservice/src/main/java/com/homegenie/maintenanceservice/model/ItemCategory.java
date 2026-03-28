@@ -1,8 +1,6 @@
 package com.homegenie.maintenanceservice.model;
 
-/**
- * Categories of household items that can be tracked and maintained
- */
+
 public enum ItemCategory {
     /**
      * Air conditioning units, fans, ventilation systems

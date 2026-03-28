@@ -54,7 +54,7 @@ public class RsaKeyConfig {
         }
     }
 
-    // ── private helpers ──────────────────────────────────────────────────────
+    
 
     private RSAKey generateEphemeral() throws Exception {
         KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
@@ -67,7 +67,7 @@ public class RsaKeyConfig {
     }
 
     private RSAKey loadFromPem() throws Exception {
-        // Strip PEM headers/footers and decode Base64
+        
         var privatePem = privateKeyPem
                 .replace("-----BEGIN PRIVATE KEY-----", "")
                 .replace("-----BEGIN RSA PRIVATE KEY-----", "")

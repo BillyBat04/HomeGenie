@@ -40,7 +40,7 @@ public class MarketplaceServiceController {
         return ResponseEntity.ok(serviceCatalogService.getServiceById(id));
     }
 
-    /** Add a new service to the catalog. Provider must be ACTIVE and verified. ADMIN only. */
+    
     @PostMapping("/services")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ServiceSummaryDTO> createService(@Valid @RequestBody CreateServiceRequest request) {
@@ -48,7 +48,7 @@ public class MarketplaceServiceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(serviceCatalogService.createService(request));
     }
 
-    /** Cross-domain endpoint — called by Maintenance Service to find external providers. */
+    
     @GetMapping("/recommendations")
     public ResponseEntity<List<ServiceSummaryDTO>> getRecommendations(@RequestParam ServiceCategory category) {
         log.info("GET /api/marketplace/recommendations - category={} (CROSS-DOMAIN CALL)", category);

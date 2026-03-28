@@ -12,19 +12,12 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * Global Exception Handler for Marketplace Service
- * 
- * Handles exceptions and returns standardized error responses.
- */
+
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
 
-    /**
-     * Handle UnauthorizedException - return 401 Unauthorized
-     * Raised when JWT is present but contains invalid/missing claims.
-     */
+    
     @ExceptionHandler(UnauthorizedException.class)
     public ResponseEntity<Map<String, Object>> handleUnauthorized(UnauthorizedException ex) {
         log.warn("Unauthorized: {}", ex.getMessage());
@@ -38,9 +31,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(body, HttpStatus.UNAUTHORIZED);
     }
 
-    /**
-     * Handle DuplicateReviewException - return 409 Conflict
-     */
+    
     @ExceptionHandler(DuplicateReviewException.class)
     public ResponseEntity<Map<String, Object>> handleDuplicateReview(DuplicateReviewException ex) {
         log.warn("Duplicate review attempted: {}", ex.getMessage());
@@ -54,9 +45,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(body, HttpStatus.CONFLICT);
     }
     
-    /**
-     * Handle IllegalArgumentException - return 400 Bad Request
-     */
+    
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
         log.warn("Invalid argument: {}", ex.getMessage());
@@ -70,9 +59,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
     
-    /**
-     * Handle IllegalStateException - return 400 Bad Request
-     */
+    
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException ex) {
         log.warn("Invalid state: {}", ex.getMessage());
@@ -86,10 +73,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 
-    /**
-     * Handle @Valid field errors - return 400 with per-field error details.
-     * Without this, Spring returns an inconsistent default error format.
-     */
+    
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
         Map<String, Object> body = new LinkedHashMap<>();

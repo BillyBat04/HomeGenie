@@ -12,13 +12,13 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     
     List<Payment> findByUserId(Long userId);
     
-    // V2 Platform methods - generic order ID
+    
     List<Payment> findByOrderId(Long orderId);
     boolean existsByOrderId(Long orderId);
     List<Payment> findByMiniAppId(String miniAppId);
     List<Payment> findByUserIdAndMiniAppId(Long userId, String miniAppId);
     
-    // Deprecated V1 methods - kept for backward compatibility
+    
     @Deprecated
     default List<Payment> findByRequestId(Long requestId) {
         return findByOrderId(requestId);

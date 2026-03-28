@@ -10,12 +10,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
 
-/**
- * OpenAPI 3.0 Configuration for Marketplace Service
- * 
- * Swagger UI available at: http://localhost:8085/swagger-ui.html
- * OpenAPI JSON: http://localhost:8085/v3/api-docs
- */
+
 @Configuration
 public class OpenAPIConfig {
 

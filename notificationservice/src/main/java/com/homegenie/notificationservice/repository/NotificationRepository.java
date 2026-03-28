@@ -29,34 +29,31 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     
     List<Notification> findByRequestId(Long requestId);
 
-    /**
-     * Idempotency check: returns true if a notification with this Kafka eventId was already saved.
-     * Call this before saving to prevent duplicate processing of re-delivered Kafka messages.
-     */
+    
     boolean existsByEventId(String eventId);
     
-    // Find notifications that need retry
+    
     @Query("SELECT n FROM Notification n WHERE n.status = 'FAILED' AND n.retryCount < n.maxRetries")
     List<Notification> findFailedNotificationsForRetry();
     
-    // Find pending notifications older than specified time
+    
     @Query("SELECT n FROM Notification n WHERE n.status = 'PENDING' AND n.createdAt < :beforeTime")
     List<Notification> findPendingNotificationsOlderThan(LocalDateTime beforeTime);
     
-    // Count notifications by status for monitoring
+    
     Long countByStatus(NotificationStatus status);
     
-    // Find notifications in date range
+    
     List<Notification> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
     
-    // Delete old notifications (cleanup job)
+    
     void deleteByCreatedAtBefore(LocalDateTime cutoffDate);
     
-    // Find unread notifications for user
+    
     @Query("SELECT n FROM Notification n WHERE n.userId = :userId AND n.status != 'READ' ORDER BY n.createdAt DESC")
     List<Notification> findUnreadNotificationsByUser(Long userId);
     
-    // Mini-app platform queries (v2)
+    
     List<Notification> findByMiniAppId(String miniAppId);
     List<Notification> findByUserIdAndMiniAppId(Long userId, String miniAppId);
     List<Notification> findByMiniAppIdAndStatus(String miniAppId, NotificationStatus status);

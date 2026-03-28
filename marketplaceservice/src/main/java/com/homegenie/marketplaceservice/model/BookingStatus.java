@@ -1,11 +1,6 @@
 package com.homegenie.marketplaceservice.model;
 
-/**
- * Booking status enum
- * 
- * Flow: PENDING → CONFIRMED (after payment) → IN_PROGRESS → COMPLETED
- * Alternative: PENDING → CANCELLED → REFUNDED
- */
+
 public enum BookingStatus {
     PENDING,      // Customer created booking, waiting for payment
     CONFIRMED,    // Payment successful, provider assigned

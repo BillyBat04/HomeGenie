@@ -7,9 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-/**
- * Review response DTO
- */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -27,7 +25,7 @@ public class ReviewResponseDTO {
     private Boolean isVisible;
     private LocalDateTime createdAt;
     
-    // Optional nested data
+    
     private String userName;
     private String providerName;
 }

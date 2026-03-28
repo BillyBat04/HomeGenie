@@ -8,9 +8,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * Payment event from Payment Service via Kafka
- */
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -21,10 +19,10 @@ public class PaymentEvent {
     private Long requestId;
     private BigDecimal amount;
     private String currency;
-    private String status; // SUCCEEDED, FAILED, REFUNDED
+    private String status; 
     private String paymentMethod;
     private String receiptUrl;
     private String failureReason;
     private LocalDateTime eventTime;
-    private String eventType; // PAYMENT_CONFIRMED, PAYMENT_FAILED, PAYMENT_REFUNDED
+    private String eventType; 
 }

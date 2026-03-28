@@ -26,12 +26,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Marketplace Review Service
- * 
- * Manages customer reviews for service providers.
- * Updates provider average rating automatically.
- */
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -46,18 +41,14 @@ public class MarketplaceReviewService {
     @Value("${marketplace.mini-app-id}")
     private String miniAppId;
     
-    /**
-     * Create review (customer action after booking completion)
-     * 
-     * Automatically updates provider average rating.
-     */
+    
     @Transactional
     public ReviewResponseDTO createReview(CreateReviewRequest request) {
         try {
             log.info("Creating review for bookingId={}, providerId={}, rating={}",
                     request.getBookingId(), request.getProviderId(), request.getRating());
             
-            // 1. Validate booking exists and is completed
+            
             MarketplaceBooking booking = bookingRepository.findById(request.getBookingId())
                     .orElseThrow(() -> new IllegalArgumentException("Booking not found: " + request.getBookingId()));
             
@@ -65,8 +56,8 @@ public class MarketplaceReviewService {
                 throw new IllegalStateException("Booking must be completed before rating: " + booking.getStatus());
             }
 
-            // Verify the authenticated user actually owns this booking.
-            // user-service sets sub = email; the numeric userId is in the custom "userId" claim.
+            
+            
             JwtAuthenticationToken jwtToken =
                     (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
             Long currentUserId;
@@ -83,14 +74,14 @@ public class MarketplaceReviewService {
                 throw new IllegalArgumentException("User " + currentUserId + " did not make this booking");
             }
             
-            // 2. Check if review already exists
+            
             if (reviewRepository.existsByBookingId(request.getBookingId())) {
                 throw new DuplicateReviewException(
                     "Review already exists for booking ID: " + request.getBookingId()
                 );
             }
             
-            // 3. Create review entity — userId taken from JWT principal, not request body
+            
             MarketplaceReview review = MarketplaceReview.builder()
                     .bookingId(request.getBookingId())
                     .userId(currentUserId)
@@ -103,7 +94,7 @@ public class MarketplaceReviewService {
             
             MarketplaceReview saved = reviewRepository.save(review);
             
-            // 4. Update provider average rating
+            
             MarketplaceProvider provider = providerRepository.findById(request.getProviderId())
                     .orElseThrow(() -> new IllegalArgumentException("Provider not found: " + request.getProviderId()));
             
@@ -113,13 +104,13 @@ public class MarketplaceReviewService {
             log.info("Review created successfully: id={}, provider new rating={}", 
                     saved.getId(), provider.getAverageRating());
             
-            // Publish ReviewSubmittedEvent to Kafka
+            
             publishReviewEvent("SUBMITTED", saved);
             
             return mapToResponseDTO(saved);
             
         } catch (DataIntegrityViolationException e) {
-            // Catch database constraint violation (unique constraint on booking_id)
+            
             log.warn("DataIntegrityViolationException caught: {}", e.getMessage());
             throw new DuplicateReviewException(
                 "Review already exists for booking ID: " + request.getBookingId(), e
@@ -127,18 +118,14 @@ public class MarketplaceReviewService {
         }
     }
     
-    /**
-     * Get reviews for provider
-     */
+    
     public List<ReviewResponseDTO> getReviewsForProvider(Long providerId) {
         return reviewRepository.findByProviderIdAndIsVisible(providerId, true).stream()
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
     }
     
-    /**
-     * Get review by booking ID
-     */
+    
     public ReviewResponseDTO getReviewByBookingId(Long bookingId) {
         MarketplaceReview review = reviewRepository.findByBookingId(bookingId)
                 .orElse(null);
@@ -146,22 +133,18 @@ public class MarketplaceReviewService {
         return review != null ? mapToResponseDTO(review) : null;
     }
     
-    /**
-     * Get reviews by user
-     */
+    
     public List<ReviewResponseDTO> getReviewsByUser(Long userId) {
         return reviewRepository.findByUserId(userId).stream()
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
     }
     
-    // ============================================================
-    // Private Helper Methods
-    // ============================================================
     
-    /**
-     * Publish review event to Kafka
-     */
+    
+    
+    
+    
     private void publishReviewEvent(String eventType, MarketplaceReview review) {
         try {
             ReviewEvent event = ReviewEvent.builder()

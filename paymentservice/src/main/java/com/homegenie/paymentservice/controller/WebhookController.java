@@ -22,9 +22,7 @@ public class WebhookController {
     @Value("${stripe.webhook-secret}")
     private String webhookSecret;
 
-    /**
-     * Handle Stripe webhook events
-     */
+    
     @PostMapping("/stripe")
     public ResponseEntity<String> handleStripeWebhook(
             @RequestBody String payload,
@@ -33,12 +31,12 @@ public class WebhookController {
         log.info("Received Stripe webhook event");
 
         try {
-            // Verify webhook signature
+            
             Event event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
 
             log.info("Processing webhook event: {} - {}", event.getId(), event.getType());
 
-            // Process the event
+            
             stripePaymentService.handleWebhookEvent(event);
 
             return ResponseEntity.ok("Webhook processed successfully");

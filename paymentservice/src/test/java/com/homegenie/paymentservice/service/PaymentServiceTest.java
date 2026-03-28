@@ -19,18 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-/**
- * Unit Tests for PaymentService
- *
- * Test Coverage:
- * - Create payment (success, Stripe failure)
- * - Confirm payment
- * - Refund payment (full, partial)
- * - Cancel payment
- * - Get payment by ID
- * - Duplicate payment prevention
- * - Transaction audit trail
- */
+
 @ExtendWith(MockitoExtension.class)
 @SuppressWarnings("null")
 class PaymentServiceTest {
@@ -72,15 +61,15 @@ class PaymentServiceTest {
 
     @Test
     void testCreatePayment_Success() throws StripeException {
-        // Given
+        
         when(paymentRepository.existsByOrderId(anyLong())).thenReturn(false);
         when(stripePaymentService.createPayment(any(PaymentRequest.class))).thenReturn(payment);
         when(paymentRepository.save(any(Payment.class))).thenReturn(payment);
 
-        // When
+        
         PaymentResponse result = paymentService.createPayment(paymentRequest);
 
-        // Then
+        
         assertNotNull(result);
         assertEquals(1L, result.getId());
         assertEquals(new BigDecimal("100.00"), result.getAmount());
@@ -92,10 +81,10 @@ class PaymentServiceTest {
 
     @Test
     void testCreatePayment_DuplicateRequest_ThrowsException() throws StripeException {
-        // Given
+        
         when(paymentRepository.existsByOrderId(anyLong())).thenReturn(true);
 
-        // When & Then
+        
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             paymentService.createPayment(paymentRequest);
         });
@@ -107,14 +96,14 @@ class PaymentServiceTest {
 
     @Test
     void testConfirmPayment_Success() throws StripeException {
-        // Given
+        
         payment.setStatus(Payment.PaymentStatus.SUCCEEDED);
         when(stripePaymentService.confirmPayment(anyString())).thenReturn(payment);
 
-        // When
+        
         PaymentResponse result = paymentService.confirmPayment("pi_test123");
 
-        // Then
+        
         assertNotNull(result);
         assertEquals("SUCCEEDED", result.getStatus());
         verify(stripePaymentService, times(1)).confirmPayment("pi_test123");
@@ -122,13 +111,13 @@ class PaymentServiceTest {
 
     @Test
     void testGetPaymentById_Success() {
-        // Given
+        
         when(paymentRepository.findById(anyLong())).thenReturn(Optional.of(payment));
 
-        // When
+        
         PaymentResponse result = paymentService.getPaymentById(1L);
 
-        // Then
+        
         assertNotNull(result);
         assertEquals(1L, result.getId());
         verify(paymentRepository, times(1)).findById(1L);
@@ -136,10 +125,10 @@ class PaymentServiceTest {
 
     @Test
     void testGetPaymentById_NotFound_ThrowsException() {
-        // Given
+        
         when(paymentRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-        // When & Then
+        
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             paymentService.getPaymentById(999L);
         });

@@ -5,9 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Token Validation Response (NEW - Platform API only)
- */
+
 @Data
 @Builder
 @AllArgsConstructor
@@ -18,5 +16,5 @@ public class TokenValidationResponse {
     private Long userId;
     private String email;
     private String role;
-    private String error;  // Error message if validation fails
+    private String error;  
 }

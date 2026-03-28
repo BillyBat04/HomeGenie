@@ -17,12 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Marketplace Service Catalog Service
- * 
- * Manages service catalog for providers.
- * Provides cross-domain recommendations to Maintenance Service.
- */
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -32,9 +27,7 @@ public class MarketplaceServiceCatalogService {
     private final MarketplaceServiceRepository serviceRepository;
     private final MarketplaceProviderRepository providerRepository;
     
-    /**
-     * Get all active services
-     */
+    
     public List<ServiceSummaryDTO> getAllActiveServices() {
         return serviceRepository.findAll().stream()
                 .filter(MarketplaceServiceEntity::isAvailable)
@@ -42,51 +35,38 @@ public class MarketplaceServiceCatalogService {
                 .collect(Collectors.toList());
     }
     
-    /**
-     * Get services by category
-     */
+    
     public List<ServiceSummaryDTO> getServicesByCategory(ServiceCategory category) {
         return serviceRepository.findByCategoryAndStatus(category, ServiceStatus.ACTIVE).stream()
                 .map(this::mapToSummaryDTO)
                 .collect(Collectors.toList());
     }
     
-    /**
-     * Get services by provider
-     */
+    
     public List<ServiceSummaryDTO> getServicesByProvider(Long providerId) {
         return serviceRepository.findByProviderIdAndStatus(providerId, ServiceStatus.ACTIVE).stream()
                 .map(this::mapToSummaryDTO)
                 .collect(Collectors.toList());
     }
     
-    /**
-     * Get service by ID
-     */
+    
     public ServiceSummaryDTO getServiceById(Long serviceId) {
         MarketplaceServiceEntity service = serviceRepository.findById(serviceId)
                 .orElseThrow(() -> new IllegalArgumentException("Service not found: " + serviceId));
         return mapToSummaryDTO(service);
     }
     
-    /**
-     * Get recommended services by category (for cross-domain recommendations)
-     * 
-     * Called by Maintenance Service when internal team not available.
-     * Returns services from top-rated, verified providers.
-     */
+    
     public List<ServiceSummaryDTO> getRecommendedServicesByCategory(ServiceCategory category) {
         log.info("Getting recommended services for category: {}", category);
         
         return serviceRepository.findRecommendedServicesByCategory(category).stream()
-                .limit(5) // Top 5 recommendations
+                .limit(5) 
                 .map(this::mapToSummaryDTO)
                 .collect(Collectors.toList());
     }
     
-    /**
-     * Create new service (provider action)
-     */
+    
     @Transactional
     public ServiceSummaryDTO createService(CreateServiceRequest request) {
         log.info("Creating new service: name={}, providerId={}", request.getName(), request.getProviderId());
@@ -115,12 +95,12 @@ public class MarketplaceServiceCatalogService {
         return mapToSummaryDTO(saved);
     }
     
-    // ============================================================
-    // Private Helper Methods
-    // ============================================================
+    
+    
+    
     
     private ServiceSummaryDTO mapToSummaryDTO(MarketplaceServiceEntity service) {
-        // Get provider name
+        
         String providerName = providerRepository.findById(service.getProviderId())
                 .map(MarketplaceProvider::getName)
                 .orElse("Unknown Provider");

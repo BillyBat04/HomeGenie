@@ -45,9 +45,9 @@ public class MiniAppPaymentRequest {
     @Schema(description = "Mini-app specific metadata", example = "{\"technicianId\": 501, \"serviceType\": \"plumbing\"}")
     private Map<String, Object> metadata;
     
-    // Stripe specific fields
+    
     @Schema(description = "Stripe payment method ID", example = "pm_1234567890")
-    private String paymentMethodId; // Stripe payment method ID
+    private String paymentMethodId; 
     
     @Schema(description = "Stripe customer ID (optional, will be created if not provided)", 
             example = "cus_1234567890")

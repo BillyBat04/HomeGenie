@@ -13,10 +13,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Global Exception Handler for Identity Service
- * Provides consistent error responses across all endpoints
- */
+
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
@@ -120,9 +117,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 
-    /**
-     * Error Response DTO
-     */
+    
     @lombok.Data
     @lombok.Builder
     @lombok.AllArgsConstructor

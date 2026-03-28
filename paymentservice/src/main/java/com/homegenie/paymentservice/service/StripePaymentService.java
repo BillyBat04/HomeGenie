@@ -41,14 +41,12 @@ public class StripePaymentService {
         log.info("Stripe API initialized successfully");
     }
 
-    /**
-     * Create a payment intent with Stripe
-     */
+    
     @Transactional
     public Payment createPayment(PaymentRequest request) throws StripeException {
         log.info("Creating payment for user {} and request {}", request.getUserId(), request.getRequestId());
 
-        // Create payment entity
+        
         Payment payment = Payment.builder()
                 .userId(request.getUserId())
                 .orderId(request.getRequestId())
@@ -61,14 +59,14 @@ public class StripePaymentService {
                 .stripeCustomerId(request.getCustomerId())
                 .build();
 
-        // Save payment first
+        
         payment = paymentRepository.save(payment);
 
         try {
-            // Convert amount to smallest currency unit (cents for USD)
+            
             Long amountInCents = request.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
 
-            // Create Stripe PaymentIntent
+            
             PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
                     .setAmount(amountInCents)
                     .setCurrency(request.getCurrency().toLowerCase())
@@ -86,12 +84,12 @@ public class StripePaymentService {
 
             PaymentIntent paymentIntent = PaymentIntent.create(params);
 
-            // Update payment with Stripe details
+            
             payment.setStripePaymentIntentId(paymentIntent.getId());
             payment.setStatus(Payment.PaymentStatus.PROCESSING);
             payment = paymentRepository.save(payment);
 
-            // Create transaction record
+            
             createTransaction(payment, Transaction.TransactionType.AUTHORIZATION, payment.getAmount(),
                     "Payment intent created: " + paymentIntent.getId());
 
@@ -107,9 +105,7 @@ public class StripePaymentService {
         }
     }
 
-    /**
-     * Confirm a payment (when payment succeeds)
-     */
+    
     @Transactional
     public Payment confirmPayment(String paymentIntentId) throws StripeException {
         log.info("Confirming payment intent: {}", paymentIntentId);
@@ -124,7 +120,7 @@ public class StripePaymentService {
                 payment.setStatus(Payment.PaymentStatus.SUCCEEDED);
                 payment.setPaidAt(LocalDateTime.now());
                 
-                // Get charge ID and receipt URL
+                
                 if (paymentIntent.getLatestCharge() != null) {
                     Charge charge = Charge.retrieve(paymentIntent.getLatestCharge());
                     payment.setStripeChargeId(charge.getId());
@@ -133,7 +129,7 @@ public class StripePaymentService {
 
                 payment = paymentRepository.save(payment);
 
-                // Create transaction
+                
                 createTransaction(payment, Transaction.TransactionType.CHARGE, payment.getAmount(),
                         "Payment succeeded");
 
@@ -148,9 +144,7 @@ public class StripePaymentService {
         }
     }
 
-    /**
-     * Refund a payment
-     */
+    
     @Transactional
     public Payment refundPayment(Long paymentId, BigDecimal amount) throws StripeException {
         log.info("Refunding payment: {} with amount: {}", paymentId, amount);
@@ -165,7 +159,7 @@ public class StripePaymentService {
         try {
             Long refundAmount = amount != null 
                     ? amount.multiply(BigDecimal.valueOf(100)).longValue()
-                    : null; // null means full refund
+                    : null; 
 
             RefundCreateParams params = RefundCreateParams.builder()
                     .setPaymentIntent(payment.getStripePaymentIntentId())
@@ -174,7 +168,7 @@ public class StripePaymentService {
 
             Refund refund = Refund.create(params);
 
-            // Update payment status
+            
             if (refund.getAmount().equals(payment.getAmount().multiply(BigDecimal.valueOf(100)).longValue())) {
                 payment.setStatus(Payment.PaymentStatus.REFUNDED);
             } else {
@@ -183,7 +177,7 @@ public class StripePaymentService {
 
             payment = paymentRepository.save(payment);
 
-            // Create refund transaction
+            
             BigDecimal refundAmountDecimal = BigDecimal.valueOf(refund.getAmount()).divide(BigDecimal.valueOf(100));
             createTransaction(payment, 
                     amount != null ? Transaction.TransactionType.PARTIAL_REFUND : Transaction.TransactionType.REFUND,
@@ -198,9 +192,7 @@ public class StripePaymentService {
         }
     }
 
-    /**
-     * Cancel a payment intent
-     */
+    
     @Transactional
     public Payment cancelPayment(Long paymentId) throws StripeException {
         log.info("Canceling payment: {}", paymentId);
@@ -231,9 +223,7 @@ public class StripePaymentService {
         }
     }
 
-    /**
-     * Handle Stripe webhook events
-     */
+    
     @Transactional
     public void handleWebhookEvent(Event event) {
         log.info("Processing webhook event: {} - {}", event.getId(), event.getType());
@@ -288,9 +278,7 @@ public class StripePaymentService {
                 });
     }
 
-    /**
-     * Helper method to create transaction records
-     */
+    
     private void createTransaction(Payment payment, Transaction.TransactionType type,
                                     BigDecimal amount, String description) {
         Transaction transaction = Transaction.builder()
@@ -307,17 +295,14 @@ public class StripePaymentService {
         log.debug("Transaction created: {} for payment: {}", transaction.getTransactionId(), payment.getId());
     }
     
-    /**
-     * ISSUE-006 FIX: Cancel payment by intent ID (for saga compensation)
-     * Used when database transaction fails after Stripe payment created
-     */
+    
     public void cancelPaymentByIntentId(String paymentIntentId) throws StripeException {
         log.warn("⚠️ Canceling Stripe payment intent for compensation: {}", paymentIntentId);
         
         try {
             PaymentIntent paymentIntent = PaymentIntent.retrieve(paymentIntentId);
             
-            // Can only cancel if payment is in cancelable state
+            
             if ("requires_payment_method".equals(paymentIntent.getStatus()) ||
                 "requires_confirmation".equals(paymentIntent.getStatus()) ||
                 "requires_action".equals(paymentIntent.getStatus()) ||

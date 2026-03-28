@@ -8,10 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.Instant;
 import java.time.LocalDate;
 
-/**
- * Received from maintenance-service via the 'maintenance-reminder' Kafka topic.
- * Structure must match MaintenanceReminderEvent published by MaintenanceEventPublisher.
- */
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -29,7 +26,7 @@ public class MaintenanceReminderEvent {
     private Integer daysUntilMaintenance;
     private LocalDate lastMaintenanceDate;
     private Integer maintenanceFrequencyDays;
-    /** OVERDUE | DUE_NOW | DUE_SOON */
+    
     private String urgencyLevel;
     private String eventType;
     private Instant timestamp;

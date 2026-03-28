@@ -20,7 +20,7 @@ public class UserEvent {
     private String phoneNumber;
     private String role;
     private String specialty;
-    private String updateType; // For UserUpdatedEvent
-    private String eventType; // USER_REGISTERED, USER_UPDATED
+    private String updateType; 
+    private String eventType; 
     private Instant timestamp;
 }

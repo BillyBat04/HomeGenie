@@ -8,10 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.Instant;
 import java.time.LocalDate;
 
-/**
- * Received from maintenance-service via the 'warranty-reminder' Kafka topic.
- * Structure must match WarrantyExpiringEvent published by MaintenanceEventPublisher.
- */
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -30,7 +27,7 @@ public class WarrantyExpiringEvent {
     private Integer daysUntilExpiry;
     private LocalDate purchaseDate;
     private String warrantyDocumentUrl;
-    /** EXPIRED | EXPIRING_SOON_1DAY | EXPIRING_SOON_7DAYS | EXPIRING_SOON_30DAYS */
+    
     private String urgencyLevel;
     private String eventType;
     private Instant timestamp;

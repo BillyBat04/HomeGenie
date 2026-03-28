@@ -6,10 +6,7 @@ import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import org.springframework.context.annotation.Configuration;
 
-/**
- * OpenAPI configuration for Notification Service
- * Following Lean Swagger principles - API contract only, no business logic docs
- */
+
 @Configuration
 @OpenAPIDefinition(
     info = @Info(

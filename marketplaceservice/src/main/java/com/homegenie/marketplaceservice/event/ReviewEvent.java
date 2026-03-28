@@ -7,17 +7,13 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-/**
- * Review Event for Kafka
- * 
- * Published to topic: marketplace.review.events
- */
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class ReviewEvent {
-    private String eventType; // SUBMITTED, VERIFIED, HIDDEN
+    private String eventType; 
     private Long reviewId;
     private Long bookingId;
     private Long providerId;

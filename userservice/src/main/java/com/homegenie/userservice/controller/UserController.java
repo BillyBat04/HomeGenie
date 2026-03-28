@@ -20,10 +20,7 @@ public class UserController {
 
     private final UserService userService;
 
-    /**
-     * Internal endpoint called by identity-service to create a user profile after registration.
-     * TODO: restrict to internal network / service mesh in production.
-     */
+    
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {

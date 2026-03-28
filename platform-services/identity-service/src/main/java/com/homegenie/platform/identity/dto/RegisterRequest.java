@@ -8,11 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Register Request DTO
- * ✅ IDENTICAL to User Service RegisterRequest
- * Ensures backward compatibility
- */
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -41,5 +37,5 @@ public class RegisterRequest {
     @Pattern(regexp = "RESIDENT|TECHNICIAN|ADMIN", message = "Role must be RESIDENT, TECHNICIAN, or ADMIN")
     private String role;
 
-    private String technicianSpecialty; // For TECHNICIAN role only
+    private String technicianSpecialty; 
 }

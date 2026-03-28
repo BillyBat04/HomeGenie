@@ -13,11 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Marketplace Provider Service
- * 
- * Manages external service providers.
- */
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -26,27 +22,21 @@ public class MarketplaceProviderService {
     
     private final MarketplaceProviderRepository providerRepository;
     
-    /**
-     * Get all active and verified providers
-     */
+    
     public List<ProviderSummaryDTO> getActiveProviders() {
         return providerRepository.findByStatusAndIsVerified(ProviderStatus.ACTIVE, true).stream()
                 .map(this::mapToSummaryDTO)
                 .collect(Collectors.toList());
     }
     
-    /**
-     * Get provider by ID
-     */
+    
     public ProviderSummaryDTO getProviderById(Long providerId) {
         MarketplaceProvider provider = providerRepository.findById(providerId)
                 .orElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerId));
         return mapToSummaryDTO(provider);
     }
     
-    /**
-     * Get top-rated providers
-     */
+    
     public List<ProviderSummaryDTO> getTopRatedProviders() {
         return providerRepository.findTopRatedProviders().stream()
                 .limit(10)
@@ -54,9 +44,7 @@ public class MarketplaceProviderService {
                 .collect(Collectors.toList());
     }
     
-    /**
-     * Create new provider (admin only)
-     */
+    
     @Transactional
     public ProviderSummaryDTO createProvider(CreateProviderRequest request) {
         log.info("Creating new provider: email={}", request.getEmail());
@@ -77,9 +65,7 @@ public class MarketplaceProviderService {
         return mapToSummaryDTO(saved);
     }
     
-    /**
-     * Verify provider (admin action)
-     */
+    
     @Transactional
     public ProviderSummaryDTO verifyProvider(Long providerId) {
         log.info("Verifying provider: id={}", providerId);
@@ -95,9 +81,9 @@ public class MarketplaceProviderService {
         return mapToSummaryDTO(saved);
     }
     
-    // ============================================================
-    // Private Helper Methods
-    // ============================================================
+    
+    
+    
     
     private ProviderSummaryDTO mapToSummaryDTO(MarketplaceProvider provider) {
         return ProviderSummaryDTO.builder()

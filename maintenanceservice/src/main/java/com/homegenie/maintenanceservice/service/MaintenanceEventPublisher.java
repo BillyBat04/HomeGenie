@@ -25,24 +25,22 @@ public class MaintenanceEventPublisher {
     @Value("${kafka.topics.maintenance-events:maintenance-events}")
     private String maintenanceEventsTopic;
 
-    // Dedicated topics watched by KEDA ScaledObject to auto-scale notification-service.
-    // Reminder events go to their own topics so KEDA can detect lag independently.
+    
+    
     @Value("${kafka.topics.maintenance-reminder:maintenance-reminder}")
     private String maintenanceReminderTopic;
 
     @Value("${kafka.topics.warranty-reminder:warranty-reminder}")
     private String warrantyReminderTopic;
 
-    /**
-     * Publish maintenance created event
-     */
+    
     public void publishMaintenanceCreatedEvent(MaintenanceCreatedEvent event) {
         try {
             String eventJson = objectMapper.writeValueAsString(event);
             log.info("📤 Publishing MaintenanceCreatedEvent: requestId={}, title={}", 
                     event.getRequestId(), event.getTitle());
             
-            // Use requestId as partition key to guarantee event ordering
+            
             kafkaTemplate.send(maintenanceEventsTopic, event.getRequestId().toString(), eventJson);
             
             log.info("✅ MaintenanceCreatedEvent published successfully");
@@ -51,9 +49,7 @@ public class MaintenanceEventPublisher {
         }
     }
 
-    /**
-     * Publish maintenance assigned event
-     */
+    
     public void publishMaintenanceAssignedEvent(MaintenanceAssignedEvent event) {
         try {
             String eventJson = objectMapper.writeValueAsString(event);
@@ -68,9 +64,7 @@ public class MaintenanceEventPublisher {
         }
     }
 
-    /**
-     * Publish maintenance status changed event
-     */
+    
     public void publishMaintenanceStatusChangedEvent(MaintenanceStatusChangedEvent event) {
         try {
             String eventJson = objectMapper.writeValueAsString(event);
@@ -85,17 +79,14 @@ public class MaintenanceEventPublisher {
         }
     }
 
-    /**
-     * Publish maintenance completed event
-     * Consumed by ItemService to update item maintenance dates
-     */
+    
     public void publishMaintenanceCompletedEvent(MaintenanceCompletedEvent event) {
         try {
             String eventJson = objectMapper.writeValueAsString(event);
             log.info("📤 Publishing MaintenanceCompletedEvent: requestId={}, itemId={}", 
                     event.getRequestId(), event.getItemId());
             
-            // Use itemId as partition key if available (for item-specific ordering), fallback to requestId
+            
             String partitionKey = event.getItemId() != null ? event.getItemId().toString() : event.getRequestId().toString();
             kafkaTemplate.send(maintenanceEventsTopic, partitionKey, eventJson);
             
@@ -105,17 +96,14 @@ public class MaintenanceEventPublisher {
         }
     }
 
-    /**
-     * Publish maintenance reminder event
-     * Consumed by Notification Service for proactive reminders
-     */
+    
     public void publishMaintenanceReminderEvent(MaintenanceReminderEvent event) {
         try {
             String eventJson = objectMapper.writeValueAsString(event);
             log.info("📤 Publishing MaintenanceReminderEvent: itemId={}, urgency={}", 
                     event.getItemId(), event.getUrgencyLevel());
             
-            // Use dedicated maintenance-reminder topic (watched by KEDA for auto-scaling)
+            
             kafkaTemplate.send(maintenanceReminderTopic, event.getItemId().toString(), eventJson);
             
             log.info("✅ MaintenanceReminderEvent published successfully");
@@ -124,17 +112,14 @@ public class MaintenanceEventPublisher {
         }
     }
 
-    /**
-     * Publish warranty expiring event
-     * Consumed by Notification Service for warranty renewal alerts
-     */
+    
     public void publishWarrantyExpiringEvent(WarrantyExpiringEvent event) {
         try {
             String eventJson = objectMapper.writeValueAsString(event);
             log.info("📤 Publishing WarrantyExpiringEvent: itemId={}, urgency={}", 
                     event.getItemId(), event.getUrgencyLevel());
             
-            // Use dedicated warranty-reminder topic (watched by KEDA for auto-scaling)
+            
             kafkaTemplate.send(warrantyReminderTopic, event.getItemId().toString(), eventJson);
             
             log.info("✅ WarrantyExpiringEvent published successfully");
