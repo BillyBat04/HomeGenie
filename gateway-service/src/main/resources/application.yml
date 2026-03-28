@@ -8,6 +8,13 @@ spring:
   codec:
     max-in-memory-size: 1MB
 
+  # JWT validation — gateway validates tokens using identity-service's JWKS (RS256)
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${IDENTITY_SERVICE_URL:http://identity-service:8086}/.well-known/jwks.json
+
 gateway:
   public-routes:
     - /api/users/register
@@ -54,7 +61,6 @@ gateway:
           predicates:
             - Path=/api/users/**
           filters:
-            - JwtAuthenticationFilter
             - name: CircuitBreaker
               args:
                 name: user-service
@@ -70,7 +76,6 @@ gateway:
           predicates:
             - Path=/api/maintenance/**
           filters:
-            - JwtAuthenticationFilter
             - name: CircuitBreaker
               args:
                 name: maintenance-service
@@ -86,7 +91,6 @@ gateway:
           predicates:
             - Path=/api/payments/**
           filters:
-            - JwtAuthenticationFilter
             - name: CircuitBreaker
               args:
                 name: payment-service
@@ -102,7 +106,6 @@ gateway:
           predicates:
             - Path=/api/wallet/**
           filters:
-            - JwtAuthenticationFilter
             - name: CircuitBreaker
               args:
                 name: payment-service
@@ -118,7 +121,6 @@ gateway:
           predicates:
             - Path=/api/invoices/**
           filters:
-            - JwtAuthenticationFilter
             - name: CircuitBreaker
               args:
                 name: payment-service
@@ -134,7 +136,6 @@ gateway:
           predicates:
             - Path=/api/notifications/**
           filters:
-            - JwtAuthenticationFilter
             - name: CircuitBreaker
               args:
                 name: notification-service
@@ -150,7 +151,6 @@ gateway:
           predicates:
             - Path=/platform/identity/v1/**
           filters:
-            - JwtAuthenticationFilter
             - name: CircuitBreaker
               args:
                 name: identity-service
@@ -178,13 +178,6 @@ gateway:
             allowedHeaders: "*"
             allowCredentials: true
             maxAge: 3600
-
-# JWT Configuration (must match User Service)
-# SECURITY: JWT_SECRET is REQUIRED - no default allowed. Set via env var or K8s secret.
-# Generate with: openssl rand -hex 32
-jwt:
-  secret: ${JWT_SECRET}
-  expiration: 86400000 # 24 hours
 
 # Platform Feature Flags (Phase 2+)
 platform:

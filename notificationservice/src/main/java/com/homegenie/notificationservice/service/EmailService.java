@@ -68,7 +68,7 @@ public class EmailService {
         mailSender.send(message);
     }
 
-    private void sendViaSES(String to, String subject, String htmlBody) {
+    private synchronized void sendViaSES(String to, String subject, String htmlBody) {
         if (sesClient == null) {
             BasicAWSCredentials creds = new BasicAWSCredentials(accessKey, secretKey);
             sesClient = AmazonSimpleEmailServiceClientBuilder.standard()
@@ -453,7 +453,7 @@ public class EmailService {
                         <p>Your smart home maintenance platform</p>
                     </div>
                     <div class="content">
-                        <h2>Hello</h2>
+                        <h2>Hello, %s!</h2>
                         <p>Thank you for registering with HomeGenie. Your account has been successfully created!</p>
                         
                         <div class="highlight">

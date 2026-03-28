@@ -312,9 +312,8 @@ public class NotificationService {
     @Scheduled(fixedDelay = 300000) 
     @Transactional
     public void retryFailedNotifications() {
-        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(5);
         List<Notification> failedNotifications = notificationRepository
-                .findFailedNotificationsForRetry(cutoff);
+                .findFailedNotificationsForRetry();
 
         log.info("🔄 Retrying {} failed notifications", failedNotifications.size());
 

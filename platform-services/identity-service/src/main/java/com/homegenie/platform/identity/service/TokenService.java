@@ -36,6 +36,7 @@ public class TokenService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
+    private final org.springframework.security.oauth2.jwt.JwtDecoder jwtDecoder;
 
     @Value("${jwt.refresh-token-expiration}") // 7 days
     private Long refreshTokenExpiration;
@@ -138,24 +139,16 @@ public class TokenService {
     }
 
     /**
-     * Validate JWT token
-     * NEW - Platform API capability
-     * Allows other services to validate tokens
+     * Validate JWT token — verifies RS256 signature + claims via Spring Security JwtDecoder.
+     * Allows other services to delegate token validation to identity-service.
      */
     public TokenValidationResponse validateToken(String token) {
         try {
-            // Validate token structure and signature
-            if (!jwtUtil.validateToken(token)) {
-                return TokenValidationResponse.builder()
-                        .valid(false)
-                        .error("Invalid token")
-                        .build();
-            }
+            org.springframework.security.oauth2.jwt.Jwt decoded = jwtDecoder.decode(token);
 
-            // Extract user information
-            String email = jwtUtil.getEmailFromToken(token);
-            Long userId = jwtUtil.getUserIdFromToken(token);
-            String role = jwtUtil.getRoleFromToken(token);
+            String email = decoded.getSubject();
+            Long userId = ((Number) decoded.getClaim("userId")).longValue();
+            String role = decoded.getClaimAsString("role");
 
             // Verify user still exists and is active
             User user = userRepository.findById(userId).orElse(null);
@@ -177,7 +170,7 @@ public class TokenService {
             log.error("Token validation error: {}", e.getMessage());
             return TokenValidationResponse.builder()
                     .valid(false)
-                    .error(e.getMessage())
+                    .error("Invalid token")
                     .build();
         }
     }

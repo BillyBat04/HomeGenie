@@ -74,6 +74,13 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
+  # JWT validation — public key fetched from identity-service JWKS endpoint (RS256)
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${IDENTITY_SERVICE_URL:http://identity-service:8086}/.well-known/jwks.json
+
 # Email Provider Configuration
 email:
   provider: ${EMAIL_PROVIDER:smtp} # smtp or ses

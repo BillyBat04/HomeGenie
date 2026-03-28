@@ -1,4 +1,4 @@
-package com.homegenie.userservice.security;
+package com.homegenie.paymentservice.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,10 +19,11 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(AbstractHttpConfigurer::disable)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Stripe webhooks are verified by their own HMAC signature
+                        .requestMatchers("/api/webhooks/stripe").permitAll()
                         .requestMatchers(
                                 "/actuator/**",
                                 "/v3/api-docs/**",

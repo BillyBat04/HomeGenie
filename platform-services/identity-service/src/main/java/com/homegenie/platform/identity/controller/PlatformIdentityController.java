@@ -214,23 +214,6 @@ public class PlatformIdentityController {
     }
 
     /**
-     * Validate JWT token (Platform API - NEW)
-     * This endpoint is for other services to validate tokens
-     */
-    @PostMapping("/validate")
-    @Operation(
-        summary = "Validate JWT token",
-        description = "Validate JWT token and return user information. Used by other services for authentication."
-    )
-    public ResponseEntity<TokenValidationResponse> validateToken(@Valid @RequestBody TokenValidationRequest request) {
-        log.info("Platform Identity API: Validate token");
-        
-        TokenValidationResponse response = tokenService.validateToken(request.getToken());
-        
-        return ResponseEntity.ok(response);
-    }
-
-    /**
      * Health check endpoint
      */
     @GetMapping("/health")

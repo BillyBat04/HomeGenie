@@ -55,17 +55,27 @@ spring:
       properties:
         spring.json.add.type.headers: false
 
+  # JWT validation — public key fetched from identity-service JWKS endpoint (RS256)
+  # No shared secret needed. Key rotation is handled by identity-service.
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${IDENTITY_SERVICE_URL:http://identity-service:8086}/.well-known/jwks.json
+
 # Kafka Topics
 kafka:
   topics:
     user-events: user-events
 
-# SECURITY: JWT_SECRET is REQUIRED - no default allowed.
-# Generate with: openssl rand -hex 32
+# RSA keypair for RS256 JWT signing.
+# In production supply PEM values via env vars. In dev an ephemeral key is auto-generated.
+rsa:
+  private-key-pem: ${RSA_PRIVATE_KEY_PEM:}
+  public-key-pem: ${RSA_PUBLIC_KEY_PEM:}
+
 jwt:
-  secret: ${JWT_SECRET}
-  expiration: ${JWT_EXPIRATION:86400000}
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days
+  access-token-expiration: ${JWT_EXPIRATION:86400000}
 
 logging:
   level:

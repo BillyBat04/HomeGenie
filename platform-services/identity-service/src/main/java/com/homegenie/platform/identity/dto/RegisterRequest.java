@@ -38,7 +38,7 @@ public class RegisterRequest {
     private String flatNumber;
 
     @NotBlank(message = "Role is required")
-    @Pattern(regexp = "USER|TECHNICIAN|ADMIN", message = "Role must be USER, TECHNICIAN, or ADMIN")
+    @Pattern(regexp = "RESIDENT|TECHNICIAN|ADMIN", message = "Role must be RESIDENT, TECHNICIAN, or ADMIN")
     private String role;
 
     private String technicianSpecialty; // For TECHNICIAN role only

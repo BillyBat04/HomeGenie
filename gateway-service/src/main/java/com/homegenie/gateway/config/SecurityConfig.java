@@ -11,70 +11,60 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
-import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
+import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers;
 
-/**
- * Security Configuration for API Gateway
- * 
- * Security Features:
- * - JWT authentication via custom filter for API routes
- * - HTTP Basic Auth for actuator endpoints (monitoring)
- * - Separate security chains for API vs management endpoints
- * 
- * Week 2 Enhancement: Secured actuator endpoints
- */
 @Configuration
 @EnableWebFluxSecurity
 public class SecurityConfig {
-    
+
     @Value("${gateway.actuator.username:admin}")
     private String actuatorUsername;
-    
+
     @Value("${gateway.actuator.password:changeme}")
     private String actuatorPassword;
-    
-    /**
-     * Security chain for actuator endpoints
-     * Requires HTTP Basic Authentication
-     */
+
+
+
+ 
     @Bean
     public SecurityWebFilterChain actuatorSecurityFilterChain(ServerHttpSecurity http) {
         return http
-            .securityMatcher(exchange -> {
-                String path = exchange.getRequest().getURI().getPath();
-                if (path.startsWith("/actuator")) {
-                    return ServerWebExchangeMatcher.MatchResult.match();
-                }
-                return ServerWebExchangeMatcher.MatchResult.notMatch();
-            })
+            .securityMatcher(ServerWebExchangeMatchers.pathMatchers("/actuator/**"))
             .csrf(ServerHttpSecurity.CsrfSpec::disable)
             .authorizeExchange(exchanges -> exchanges
-                .pathMatchers("/actuator/health/**").permitAll() // K8s health checks
-                .pathMatchers("/actuator/info").permitAll() // Public info
-                .pathMatchers("/actuator/**").authenticated() // Secure all other actuator endpoints
+                .pathMatchers("/actuator/health/**").permitAll()
+                .pathMatchers("/actuator/info").permitAll()
+                .pathMatchers("/actuator/**").authenticated()
             )
-            .httpBasic(basic -> {}) // Enable HTTP Basic Auth
+            .httpBasic(basic -> {})
             .build();
     }
-    
-    /**
-     * Security chain for API routes
-     * JWT authentication handled by custom filter
-     */
+
+
     @Bean
     public SecurityWebFilterChain apiSecurityFilterChain(ServerHttpSecurity http) {
         return http
             .csrf(ServerHttpSecurity.CsrfSpec::disable)
             .authorizeExchange(exchanges -> exchanges
-                .anyExchange().permitAll() // JWT filter handles auth
+                // These paths don't require a token
+                .pathMatchers(
+                    "/api/users/register",
+                    "/api/users/login",
+                    "/api/auth/**",
+                    "/platform/identity/v1/register",
+                    "/platform/identity/v1/authenticate",
+                    "/platform/identity/v1/refresh",
+                    "/platform/identity/v1/logout",
+                    "/.well-known/jwks.json",
+                    "/fallback/**"
+                ).permitAll()
+                .anyExchange().authenticated()
             )
+
+            .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}))
             .build();
     }
-    
-    /**
-     * User details service for actuator authentication
-     * Credentials from environment variables or application.yml
-     */
+
     @Bean
     public MapReactiveUserDetailsService actuatorUserDetailsService() {
         UserDetails user = User.builder()
@@ -84,7 +74,7 @@ public class SecurityConfig {
             .build();
         return new MapReactiveUserDetailsService(user);
     }
-    
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

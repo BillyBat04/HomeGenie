@@ -1,89 +1,66 @@
 package com.homegenie.userservice.security;
 
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
-import jakarta.annotation.PostConstruct;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import java.security.Key;
+
+import java.time.Instant;
 import java.util.Date;
 
+/**
+ * JWT token generator for UserService (RS256).
+ *
+ * <p>Signs tokens with the RSA private key managed by {@link RsaKeyConfig}.
+ * Validation is delegated to Spring Security's NimbusJwtDecoder via
+ * {@code spring.security.oauth2.resourceserver.jwt.jwk-set-uri}.
+ * This class only generates — it never parses or validates.
+ */
 @Component
+@Slf4j
+@RequiredArgsConstructor
 public class JwtUtil {
 
-    @Value("${jwt.secret}")
-    private String secret;
+    private final RsaKeyConfig rsaKeyConfig;
 
-    @Value("${jwt.expiration}") // 24 hours
-    private Long expiration;
-    
+    @Value("${jwt.access-token-expiration}")
+    private Long accessTokenExpiration;
+
     /**
-     * SECURITY: Validate JWT secret on startup
-     * Prevents application from starting with missing or weak secret
+     * Generate a signed RS256 JWT access token.
+     *
+     * <p>Claims:
+     * <ul>
+     *   <li>{@code sub}    — user's email address
+     *   <li>{@code userId} — internal numeric user id
+     *   <li>{@code role}   — RESIDENT / TECHNICIAN / ADMIN
+     * </ul>
      */
-    @PostConstruct
-    public void validateConfiguration() {
-        if (secret == null || secret.trim().isEmpty()) {
-            throw new IllegalStateException(
-                "JWT_SECRET environment variable must be set. " +
-                "Generate a secure 256-bit key and set it as environment variable."
-            );
-        }
-        
-        if (secret.length() < 32) {
-            throw new IllegalStateException(
-                "JWT_SECRET must be at least 256 bits (32 characters). " +
-                "Current length: " + secret.length() + " characters. " +
-                "Use a cryptographically secure random key."
-            );
-        }
-        
-        // Warn about common weak patterns (but don't block - allow override)
-        if (secret.contains("CHANGE_THIS") || secret.contains("SECRET_KEY")) {
-            throw new IllegalStateException(
-                "JWT_SECRET contains default/example value. " +
-                "This is a critical security vulnerability. " +
-                "Generate a unique secure key for production."
-            );
-        }
-    }
-
-    private Key getSigningKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes());
-    }
-
     public String generateToken(String email, Long userId, String role) {
-        Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + expiration);
-
-        return Jwts.builder()
-                .setSubject(email)
-                .claim("userId", userId)
-                .claim("role", role)
-                .setIssuedAt(now)
-                .setExpiration(expiryDate)
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
-                .compact();
-    }
-
-    public String getEmailFromToken(String token) {
-        Claims claims = Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-        return claims.getSubject();
-    }
-
-    public boolean validateToken(String token) {
         try {
-            Jwts.parserBuilder()
-                    .setSigningKey(getSigningKey())
-                    .build()
-                    .parseClaimsJws(token);
-            return true;
-        } catch (JwtException | IllegalArgumentException e) {
-            return false;
+            Instant now = Instant.now();
+            JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                    .subject(email)
+                    .claim("userId", userId)
+                    .claim("role", role)
+                    .issueTime(Date.from(now))
+                    .expirationTime(Date.from(now.plusMillis(accessTokenExpiration)))
+                    .build();
+
+            JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.RS256)
+                    .keyID(rsaKeyConfig.getRsaKey().getKeyID())
+                    .build();
+
+            SignedJWT signedJWT = new SignedJWT(header, claims);
+            signedJWT.sign(new RSASSASigner(rsaKeyConfig.getPrivateKey()));
+            return signedJWT.serialize();
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to generate JWT token", e);
         }
     }
 }
