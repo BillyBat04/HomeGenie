@@ -4,6 +4,7 @@ import com.homegenie.paymentservice.dto.PaymentRequest;
 import com.homegenie.paymentservice.dto.PaymentResponse;
 import com.homegenie.paymentservice.model.Payment;
 import com.homegenie.paymentservice.repository.PaymentRepository;
+import com.homegenie.paymentservice.service.impl.PaymentServiceImpl;
 import com.stripe.exception.StripeException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,8 +31,14 @@ class PaymentServiceTest {
     @Mock
     private PaymentRepository paymentRepository;
 
+    @Mock
+    private MaintenanceServiceClient maintenanceServiceClient;
+
+    @Mock
+    private PaymentEventPublisher paymentEventPublisher;
+
     @InjectMocks
-    private PaymentService paymentService;
+    private PaymentServiceImpl paymentService;
 
     private PaymentRequest paymentRequest;
     private Payment payment;
@@ -61,22 +68,26 @@ class PaymentServiceTest {
 
     @Test
     void testCreatePayment_Success() throws StripeException {
-        
+        // Arrange
         when(paymentRepository.existsByOrderId(anyLong())).thenReturn(false);
+        doNothing().when(maintenanceServiceClient).validatePaymentAllowed(anyLong());
         when(stripePaymentService.createPayment(any(PaymentRequest.class))).thenReturn(payment);
         when(paymentRepository.save(any(Payment.class))).thenReturn(payment);
+        doNothing().when(paymentEventPublisher).publishPaymentConfirmed(any(Payment.class));
 
-        
+        // Act
         PaymentResponse result = paymentService.createPayment(paymentRequest);
 
-        
+        // Assert
         assertNotNull(result);
         assertEquals(1L, result.getId());
         assertEquals(new BigDecimal("100.00"), result.getAmount());
         assertEquals("pi_test123", result.getStripePaymentIntentId());
 
         verify(paymentRepository, times(1)).existsByOrderId(1L);
+        verify(maintenanceServiceClient, times(1)).validatePaymentAllowed(1L);
         verify(stripePaymentService, times(1)).createPayment(paymentRequest);
+        verify(paymentEventPublisher, times(1)).publishPaymentConfirmed(payment);
     }
 
     @Test

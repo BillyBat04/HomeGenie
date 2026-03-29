@@ -3,6 +3,7 @@ package com.homegenie.maintenanceservice.service;
 import com.homegenie.maintenanceservice.dto.*;
 import com.homegenie.maintenanceservice.model.*;
 import com.homegenie.maintenanceservice.repository.MaintenanceRepository;
+import com.homegenie.maintenanceservice.service.impl.MaintenanceServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,7 +43,7 @@ class MaintenanceServiceTest {
     private RestTemplate restTemplate;
 
     @InjectMocks
-    private MaintenanceService maintenanceService;
+    private MaintenanceServiceImpl maintenanceService;
 
     private MaintenanceRequestDTO requestDTO;
     private MaintenanceRequest request;

@@ -1,5 +1,6 @@
 package com.homegenie.platform.identity.service;
 
+import com.homegenie.platform.identity.service.impl.TokenServiceImpl;
 import com.homegenie.platform.identity.dto.TokenRefreshResponse;
 import com.homegenie.platform.identity.exception.InvalidRefreshTokenException;
 import com.homegenie.platform.identity.model.RefreshToken;
@@ -34,7 +35,7 @@ class TokenServiceTest {
     @Mock private JwtUtil jwtUtil;
 
     @InjectMocks
-    private TokenService tokenService;
+    private TokenServiceImpl tokenService;
 
     
     private static final long REFRESH_EXPIRATION_MS = 604_800_000L;

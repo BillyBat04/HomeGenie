@@ -1,6 +1,7 @@
 package com.homegenie.maintenanceservice.service;
 
 import com.homegenie.maintenanceservice.dto.AIClassificationResponse;
+import com.homegenie.maintenanceservice.service.impl.AIClassificationServiceImpl;
 import com.homegenie.maintenanceservice.model.Category;
 import com.homegenie.maintenanceservice.model.Priority;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +29,7 @@ class AIClassificationServiceTest {
     private RestTemplate restTemplate;
 
     @InjectMocks
-    private AIClassificationService aiService;
+    private AIClassificationServiceImpl aiService;
 
     @BeforeEach
     void setUp() {

@@ -1,5 +1,6 @@
 package com.homegenie.userservice.service;
 
+import com.homegenie.userservice.service.impl.UserServiceImpl;
 import com.homegenie.userservice.dto.CreateUserRequest;
 import com.homegenie.userservice.dto.UpdateUserRequest;
 import com.homegenie.userservice.dto.UserResponse;
@@ -32,7 +33,7 @@ class UserServiceTest {
     private UserEventPublisher eventPublisher;
 
     @InjectMocks
-    private UserService userService;
+    private UserServiceImpl userService;
 
     private CreateUserRequest createRequest;
     private User user;
