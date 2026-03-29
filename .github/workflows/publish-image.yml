@@ -1,19 +1,4 @@
-# ===================================================================
-# Reusable Workflow: Build, Scan, Sign and Push Container Image
-# ===================================================================
-# This workflow uses Jib to build container images, generates SBOM,
-# scans for vulnerabilities, signs images with cosign, and pushes
-# to GitHub Container Registry (GHCR).
-#
-# Usage:
-#   jobs:
-#     publish:
-#       uses: ./.github/workflows/publish-image.yml
-#       with:
-#         service: userservice
-#         tag: 1.0.0
-#       secrets: inherit
-# ===================================================================
+
 
 name: Publish Image (Reusable)
 
@@ -105,7 +90,7 @@ jobs:
           retention-days: 90
 
       - name: 🔍 Vulnerability scan with Trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: ${{ steps.meta.outputs.full_tag }}
           format: "sarif"
@@ -124,15 +109,11 @@ jobs:
 
       - name: ✍️ Sign image with Cosign (keyless)
         if: ${{ inputs.push }}
-        env:
-          COSIGN_EXPERIMENTAL: 1
         run: |
           cosign sign --yes ${{ steps.meta.outputs.full_tag }}
 
       - name: ✅ Verify image signature
         if: ${{ inputs.push }}
-        env:
-          COSIGN_EXPERIMENTAL: 1
         run: |
           cosign verify ${{ steps.meta.outputs.full_tag }} \
             --certificate-identity-regexp="https://github.com/${{ github.repository_owner }}.*" \

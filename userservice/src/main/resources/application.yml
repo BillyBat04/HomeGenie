@@ -44,7 +44,7 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+        "[format_sql]": true
 
   # Kafka Configuration
   kafka:
@@ -53,7 +53,7 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
-        spring.json.add.type.headers: false
+        "[spring.json.add.type.headers]": false
 
   # JWT validation — public key fetched from identity-service JWKS endpoint (RS256)
   # No shared secret needed. Key rotation is handled by identity-service.
