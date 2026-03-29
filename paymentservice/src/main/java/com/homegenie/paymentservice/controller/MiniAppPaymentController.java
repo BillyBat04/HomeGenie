@@ -189,4 +189,27 @@ public class MiniAppPaymentController {
                 "timestamp", java.time.LocalDateTime.now().toString()
         ));
     }
+
+    @PostMapping("/{paymentId}/refund")
+    @Operation(
+        summary = "Refund mini-app payment",
+        description = "Process a full or partial refund for a mini-app payment via Stripe"
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Refund processed successfully",
+            content = @Content(schema = @Schema(implementation = MiniAppPaymentResponse.class))
+        ),
+        @ApiResponse(responseCode = "404", description = "Payment not found"),
+        @ApiResponse(responseCode = "402", description = "Stripe refund error"),
+        @ApiResponse(responseCode = "422", description = "Payment not in refundable state")
+    })
+    public ResponseEntity<MiniAppPaymentResponse> refundPayment(
+            @PathVariable Long paymentId,
+            @RequestParam(required = false) java.math.BigDecimal amount) throws Exception {
+        log.info("POST /api/payments/mini-app/{}/refund - Amount: {}", paymentId, amount);
+        MiniAppPaymentResponse response = paymentPlatformService.refundMiniAppPayment(paymentId, amount);
+        return ResponseEntity.ok(response);
+    }
 }

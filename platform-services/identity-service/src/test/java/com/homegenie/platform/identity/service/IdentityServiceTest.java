@@ -1,5 +1,6 @@
 package com.homegenie.platform.identity.service;
 
+import com.homegenie.platform.identity.service.impl.IdentityServiceImpl;
 import com.homegenie.platform.identity.dto.AuthResponse;
 import com.homegenie.platform.identity.dto.LoginRequest;
 import com.homegenie.platform.identity.dto.RegisterRequest;
@@ -37,7 +38,7 @@ class IdentityServiceTest {
     @Mock private TokenService tokenService;
 
     @InjectMocks
-    private IdentityService identityService;
+    private IdentityServiceImpl identityService;
 
 
 

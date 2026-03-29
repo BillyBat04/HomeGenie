@@ -1,5 +1,6 @@
 package com.homegenie.marketplaceservice.service;
 
+import com.homegenie.marketplaceservice.service.impl.MarketplaceReviewServiceImpl;
 import com.homegenie.marketplaceservice.dto.CreateReviewRequest;
 import com.homegenie.marketplaceservice.dto.ReviewResponseDTO;
 import com.homegenie.marketplaceservice.event.ReviewEvent;
@@ -49,7 +50,7 @@ class MarketplaceReviewServiceTest {
     private KafkaTemplate<String, ReviewEvent> kafkaTemplate;
     
     @InjectMocks
-    private MarketplaceReviewService reviewService;
+    private MarketplaceReviewServiceImpl reviewService;
     
     private MarketplaceBooking testBooking;
     private MarketplaceProvider testProvider;

@@ -16,6 +16,7 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class PaymentEventPublisher {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
@@ -37,30 +38,39 @@ public class PaymentEventPublisher {
     }
 
     private void publish(String eventType, Payment payment, String failureReason) {
-        try {
-            Map<String, Object> event = new HashMap<>();
-            event.put("paymentId", payment.getId());
-            event.put("userId", payment.getUserId());
-            event.put("requestId", payment.getOrderId());
-            event.put("amount", payment.getAmount());
-            event.put("currency", payment.getCurrency());
-            event.put("status", payment.getStatus() != null ? payment.getStatus().name() : null);
-            event.put("paymentMethod", payment.getPaymentMethod() != null ? payment.getPaymentMethod().name() : null);
-            event.put("failureReason", failureReason);
-            event.put("eventType", eventType);
-            event.put("eventTime", LocalDateTime.now().toString());
+        Map<String, Object> event = new HashMap<>();
+        event.put("paymentId", payment.getId());
+        event.put("userId", payment.getUserId());
+        event.put("requestId", payment.getOrderId());
+        event.put("amount", payment.getAmount());
+        event.put("currency", payment.getCurrency());
+        event.put("status", payment.getStatus() != null ? payment.getStatus().name() : null);
+        event.put("paymentMethod", payment.getPaymentMethod() != null ? payment.getPaymentMethod().name() : null);
+        event.put("failureReason", failureReason);
+        event.put("eventType", eventType);
+        event.put("eventTime", LocalDateTime.now().toString());
 
-            String partitionKey = payment.getUserId().toString();
-            String topic = Objects.requireNonNull(paymentEventsTopic, "paymentEventsTopic");
-            String key = Objects.requireNonNull(partitionKey, "partitionKey");
-            log.info("📤 Publishing {}: paymentId={}, userId={}", eventType, payment.getId(), payment.getUserId());
-            kafkaTemplate.send(topic, key, event);
-            log.info(" {} published successfully", eventType);
-        } catch (Exception e) {
-            
-            
-            log.error(" Failed to publish {}: {}. Payment {} was already committed — no rollback.", 
-                    eventType, e.getMessage(), payment.getId());
-        }
+        String partitionKey = Objects.requireNonNull(payment.getUserId(), "userId").toString();
+        String topic = Objects.requireNonNull(paymentEventsTopic, "paymentEventsTopic");
+
+        log.info("📤 Publishing {}: paymentId={}, userId={}", eventType, payment.getId(), payment.getUserId());
+
+        kafkaTemplate.send(topic, partitionKey, event)
+                .whenComplete((result, ex) -> {
+                    if (ex != null) {
+                        // Kafka producer retries (configured via retries=3) have already been
+                        // exhausted at this point. The payment is committed — this is an
+                        // at-least-once delivery gap. A Transactional Outbox Pattern is the
+                        // production-grade solution; for now we emit a WARN with full context
+                        // so operations / alerting can detect the gap.
+                        log.warn("⚠️  KAFKA_PUBLISH_FAILED eventType={} paymentId={} userId={} error={}",
+                                eventType, payment.getId(), payment.getUserId(), ex.getMessage());
+                    } else {
+                        log.info("✅ {} published → topic={} partition={} offset={}",
+                                eventType, result.getRecordMetadata().topic(),
+                                result.getRecordMetadata().partition(),
+                                result.getRecordMetadata().offset());
+                    }
+                });
     }
 }

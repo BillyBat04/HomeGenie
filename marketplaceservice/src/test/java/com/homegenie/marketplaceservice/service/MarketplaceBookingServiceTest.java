@@ -1,5 +1,6 @@
 package com.homegenie.marketplaceservice.service;
 
+import com.homegenie.marketplaceservice.service.impl.MarketplaceBookingServiceImpl;
 import com.homegenie.marketplaceservice.dto.BookingResponseDTO;
 import com.homegenie.marketplaceservice.dto.CreateBookingRequest;
 import com.homegenie.marketplaceservice.dto.PaymentVerificationDTO;
@@ -45,7 +46,7 @@ class MarketplaceBookingServiceTest {
     private KafkaTemplate<String, BookingEvent> kafkaTemplate;
     
     @InjectMocks
-    private MarketplaceBookingService bookingService;
+    private MarketplaceBookingServiceImpl bookingService;
     
     private MarketplaceProvider testProvider;
     private MarketplaceServiceEntity testService;

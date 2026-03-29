@@ -75,40 +75,48 @@ class WebhookControllerTest {
                             "Invalid signature", invalidSignature));
 
             
-            assertThrows(Exception.class, () -> {
-                webhookController.handleStripeWebhook(payload, invalidSignature);
-            });
+            ResponseEntity<String> response = webhookController.handleStripeWebhook(payload, invalidSignature);
+            assertEquals(400, response.getStatusCode().value());
+            assertEquals("Invalid signature", response.getBody());
 
             verify(stripePaymentService, never()).handleWebhookEvent(any());
         }
     }
 
     @Test
-    void testHandleStripeWebhook_MissingSignature_ThrowsException() {
+    void testHandleStripeWebhook_MissingSignature_ReturnsBAD_REQUEST() {
         
         String payload = "{\"type\":\"payment_intent.succeeded\"}";
         String nullSignature = null;
 
-        
-        assertThrows(Exception.class, () -> {
-            webhookController.handleStripeWebhook(payload, nullSignature);
-        });
+        try (MockedStatic<Webhook> mockedWebhook = mockStatic(Webhook.class)) {
+            mockedWebhook.when(() -> Webhook.constructEvent(payload, nullSignature, WEBHOOK_SECRET))
+                    .thenThrow(new com.stripe.exception.SignatureVerificationException(
+                            "Missing signature", nullSignature));
 
-        verify(stripePaymentService, never()).handleWebhookEvent(any());
+            ResponseEntity<String> response = webhookController.handleStripeWebhook(payload, nullSignature);
+            assertEquals(400, response.getStatusCode().value());
+
+            verify(stripePaymentService, never()).handleWebhookEvent(any());
+        }
     }
 
     @Test
-    void testHandleStripeWebhook_EmptySignature_ThrowsException() {
+    void testHandleStripeWebhook_EmptySignature_ReturnsBAD_REQUEST() {
         
         String payload = "{\"type\":\"payment_intent.succeeded\"}";
         String emptySignature = "";
 
-        
-        assertThrows(Exception.class, () -> {
-            webhookController.handleStripeWebhook(payload, emptySignature);
-        });
+        try (MockedStatic<Webhook> mockedWebhook = mockStatic(Webhook.class)) {
+            mockedWebhook.when(() -> Webhook.constructEvent(payload, emptySignature, WEBHOOK_SECRET))
+                    .thenThrow(new com.stripe.exception.SignatureVerificationException(
+                            "Empty signature", emptySignature));
 
-        verify(stripePaymentService, never()).handleWebhookEvent(any());
+            ResponseEntity<String> response = webhookController.handleStripeWebhook(payload, emptySignature);
+            assertEquals(400, response.getStatusCode().value());
+
+            verify(stripePaymentService, never()).handleWebhookEvent(any());
+        }
     }
 
     @Test
@@ -123,9 +131,8 @@ class WebhookControllerTest {
                     .thenThrow(new IllegalArgumentException("Invalid JSON"));
 
             
-            assertThrows(Exception.class, () -> {
-                webhookController.handleStripeWebhook(malformedPayload, signature);
-            });
+            ResponseEntity<String> response = webhookController.handleStripeWebhook(malformedPayload, signature);
+            assertEquals(500, response.getStatusCode().value());
 
             verify(stripePaymentService, never()).handleWebhookEvent(any());
         }
@@ -242,9 +249,9 @@ class WebhookControllerTest {
                             "Timestamp outside tolerance", oldSignature));
 
             
-            assertThrows(Exception.class, () -> {
-                webhookController.handleStripeWebhook(payload, oldSignature);
-            });
+            ResponseEntity<String> response = webhookController.handleStripeWebhook(payload, oldSignature);
+            assertEquals(400, response.getStatusCode().value());
+            assertEquals("Invalid signature", response.getBody());
 
             verify(stripePaymentService, never()).handleWebhookEvent(any());
         }
@@ -268,9 +275,8 @@ class WebhookControllerTest {
                     .when(stripePaymentService).handleWebhookEvent(mockEvent);
 
             
-            assertThrows(RuntimeException.class, () -> {
-                webhookController.handleStripeWebhook(payload, signature);
-            });
+            ResponseEntity<String> response = webhookController.handleStripeWebhook(payload, signature);
+            assertEquals(500, response.getStatusCode().value());
 
             verify(stripePaymentService, times(1)).handleWebhookEvent(any());
         }
@@ -287,26 +293,28 @@ class WebhookControllerTest {
                     .thenThrow(new IllegalArgumentException("Empty payload"));
 
             
-            assertThrows(Exception.class, () -> {
-                webhookController.handleStripeWebhook(emptyPayload, signature);
-            });
+            ResponseEntity<String> response = webhookController.handleStripeWebhook(emptyPayload, signature);
+            assertEquals(500, response.getStatusCode().value());
 
             verify(stripePaymentService, never()).handleWebhookEvent(any());
         }
     }
 
     @Test
-    void testHandleStripeWebhook_NullPayload_ThrowsException() {
+    void testHandleStripeWebhook_NullPayload_ReturnsError() {
         
         String nullPayload = null;
         String signature = VALID_SIGNATURE;
 
-        
-        assertThrows(Exception.class, () -> {
-            webhookController.handleStripeWebhook(nullPayload, signature);
-        });
+        try (MockedStatic<Webhook> mockedWebhook = mockStatic(Webhook.class)) {
+            mockedWebhook.when(() -> Webhook.constructEvent(nullPayload, signature, WEBHOOK_SECRET))
+                    .thenThrow(new IllegalArgumentException("Null payload"));
 
-        verify(stripePaymentService, never()).handleWebhookEvent(any());
+            ResponseEntity<String> response = webhookController.handleStripeWebhook(nullPayload, signature);
+            assertEquals(500, response.getStatusCode().value());
+
+            verify(stripePaymentService, never()).handleWebhookEvent(any());
+        }
     }
 }
 

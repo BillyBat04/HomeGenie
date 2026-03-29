@@ -1,5 +1,6 @@
 package com.homegenie.notificationservice.service;
 
+import com.homegenie.notificationservice.service.impl.NotificationServiceImpl;
 import com.homegenie.notificationservice.dto.*;
 import com.homegenie.notificationservice.model.Notification;
 import com.homegenie.notificationservice.repository.NotificationRepository;
@@ -36,7 +37,7 @@ class NotificationServiceTest {
     private RestTemplate restTemplate;
 
     @InjectMocks
-    private NotificationService notificationService;
+    private NotificationServiceImpl notificationService;
 
     private PaymentEvent paymentEvent;
     private InvoiceEvent invoiceEvent;
