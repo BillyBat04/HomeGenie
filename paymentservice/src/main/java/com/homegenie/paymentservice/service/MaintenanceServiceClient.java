@@ -1,12 +1,14 @@
 package com.homegenie.paymentservice.service;
 
 import com.homegenie.paymentservice.dto.MaintenanceRequestDto;
+import com.homegenie.paymentservice.exception.ServiceUnavailableException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 @Service
 @Slf4j
@@ -30,13 +32,16 @@ public class MaintenanceServiceClient {
                 .uri(url)
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, response ->
-                        response.createException().map(ex -> new RuntimeException(
-                                "Maintenance request not found: " + requestId)))
+                        response.createException().map(ex ->
+                                new IllegalArgumentException("Maintenance request not found: " + requestId)))
+                .onStatus(HttpStatusCode::is5xxServerError, response ->
+                        response.createException().map(ex ->
+                                new ServiceUnavailableException("Maintenance Service")))
                 .bodyToMono(MaintenanceRequestDto.class)
                 .block(); // virtual threads make blocking safe here
 
         if (request == null) {
-            throw new RuntimeException("Maintenance request not found: " + requestId);
+            throw new IllegalArgumentException("Maintenance request not found: " + requestId);
         }
         log.info("Retrieved maintenance request {}: status={}, assignedTo={}",
                 requestId, request.getStatus(), request.getAssignedTo());
@@ -72,6 +77,7 @@ public class MaintenanceServiceClient {
     private MaintenanceRequestDto getMaintenanceRequestFallback(Long requestId, Exception ex) {
         log.error("Circuit breaker OPEN for Maintenance Service. Request ID: {}, cause: {}",
                 requestId, ex.getMessage());
-        throw new RuntimeException("Maintenance Service is currently unavailable. Please try again later.");
+        throw new ServiceUnavailableException("Maintenance Service", ex);
     }
 }
+

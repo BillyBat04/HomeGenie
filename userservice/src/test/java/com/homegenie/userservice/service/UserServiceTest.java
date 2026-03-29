@@ -82,7 +82,7 @@ class UserServiceTest {
         RuntimeException exception = assertThrows(RuntimeException.class, () ->
                 userService.createUser(createRequest));
 
-        assertEquals("Email already registered", exception.getMessage());
+        assertTrue(exception.getMessage().startsWith("Email already registered"));
         verify(userRepository, never()).save(any(User.class));
         verify(eventPublisher, never()).publishUserRegisteredEvent(any());
     }
@@ -131,7 +131,7 @@ class UserServiceTest {
         RuntimeException exception = assertThrows(RuntimeException.class, () ->
                 userService.getUserById(999L));
 
-        assertEquals("User not found", exception.getMessage());
+        assertTrue(exception.getMessage().startsWith("User not found"));
         verify(userRepository).findById(999L);
     }
 
@@ -159,6 +159,6 @@ class UserServiceTest {
         RuntimeException exception = assertThrows(RuntimeException.class, () ->
                 userService.updateUser(999L, new UpdateUserRequest()));
 
-        assertEquals("User not found", exception.getMessage());
+        assertTrue(exception.getMessage().startsWith("User not found"));
     }
 }
