@@ -74,7 +74,7 @@ public class UserControllerIntegrationTest {
     }
 
     @Test
-    void createUser_DuplicateEmail_Returns500() throws Exception {
+    void createUser_DuplicateEmail_Returns409() throws Exception {
         CreateUserRequest request = new CreateUserRequest();
         request.setEmail("admin@example.com"); 
         request.setFullName("Duplicate");
@@ -82,7 +82,7 @@ public class UserControllerIntegrationTest {
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().is5xxServerError());
+                .andExpect(status().isConflict());
     }
 
     @Test

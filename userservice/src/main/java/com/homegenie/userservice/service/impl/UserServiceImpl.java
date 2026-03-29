@@ -2,7 +2,9 @@ package com.homegenie.userservice.service.impl;
 
 
 import com.homegenie.userservice.service.UserService;
-import com.homegenie.userservice.service.*;
+import com.homegenie.userservice.service.UserEventPublisher;
+import com.homegenie.userservice.exception.EmailAlreadyExistsException;
+import com.homegenie.userservice.exception.UserNotFoundException;
 import com.homegenie.userservice.dto.*;
 import com.homegenie.userservice.dto.event.UserRegisteredEvent;
 import com.homegenie.userservice.dto.event.UserUpdatedEvent;
@@ -28,7 +30,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserResponse createUser(CreateUserRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already registered");
+            throw new EmailAlreadyExistsException(request.getEmail());
         }
 
         User user = new User();
@@ -56,7 +58,7 @@ public class UserServiceImpl implements UserService {
 
     public UserResponse getUserById(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(id));
 
         return mapToUserResponse(user);
     }
@@ -78,7 +80,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserResponse updateUser(Long id, UpdateUserRequest request) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(id));
 
         if (request.getFullName() != null) {
             user.setFullName(request.getFullName());

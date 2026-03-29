@@ -1,8 +1,9 @@
 package com.homegenie.notificationservice.service.impl;
 
 
+import com.homegenie.notificationservice.service.EmailService;
 import com.homegenie.notificationservice.service.NotificationService;
-import com.homegenie.notificationservice.service.*;
+import com.homegenie.notificationservice.exception.NotificationNotFoundException;
 import com.homegenie.notificationservice.dto.*;
 import com.homegenie.notificationservice.model.Notification;
 import com.homegenie.notificationservice.model.Notification.*;
@@ -358,7 +359,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void markAsRead(Long notificationId) {
         Notification notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new RuntimeException("Notification not found: " + notificationId));
+                .orElseThrow(() -> new NotificationNotFoundException(notificationId));
         notification.setStatus(NotificationStatus.READ);
         notification.setReadAt(LocalDateTime.now());
         notificationRepository.save(notification);

@@ -1,8 +1,12 @@
 package com.homegenie.maintenanceservice.service.impl;
 
 
+import com.homegenie.maintenanceservice.service.AIClassificationService;
+import com.homegenie.maintenanceservice.service.EmailNotificationService;
+import com.homegenie.maintenanceservice.service.MaintenanceEventPublisher;
 import com.homegenie.maintenanceservice.service.MaintenanceService;
-import com.homegenie.maintenanceservice.service.*;
+import com.homegenie.maintenanceservice.service.S3Service;
+import com.homegenie.maintenanceservice.exception.ResourceNotFoundException;
 import com.homegenie.maintenanceservice.client.PaymentServiceClient;
 import com.homegenie.maintenanceservice.dto.*;
 import com.homegenie.maintenanceservice.dto.event.*;
@@ -138,7 +142,7 @@ public class MaintenanceServiceImpl implements MaintenanceService {
 
     public MaintenanceResponseDTO getRequestById(Long id) {
         MaintenanceRequest request = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Request not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("MaintenanceRequest", id));
         return mapToResponseDTO(request);
     }
 
@@ -147,7 +151,7 @@ public class MaintenanceServiceImpl implements MaintenanceService {
         log.info("Updating maintenance request ID: {} with data: {}", id, dto);
 
         MaintenanceRequest request = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Request not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("MaintenanceRequest", id));
 
         Status oldStatus = request.getStatus();
         Long oldAssignedTo = request.getAssignedTo();
@@ -297,7 +301,7 @@ public class MaintenanceServiceImpl implements MaintenanceService {
     @Transactional
     public void deleteRequest(Long id) {
         MaintenanceRequest request = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Request not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("MaintenanceRequest", id));
 
         if (request.getImageUrl() != null) {
             try {
