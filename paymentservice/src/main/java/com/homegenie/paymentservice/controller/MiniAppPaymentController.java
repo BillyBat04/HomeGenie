@@ -23,15 +23,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Mini-App Payment Platform Controller
- * 
- * Handles payment operations for all mini-apps with commission tracking.
- * This is the platform-level payment API that supports multiple mini-apps.
- * 
- * @version 2.0.0
- * @since Payment Platform v2 - January 2026
- */
+
 @RestController
 @RequestMapping("/api/payments/mini-app")
 @Slf4j
@@ -42,14 +34,7 @@ public class MiniAppPaymentController {
 
     private final PaymentPlatformService paymentPlatformService;
 
-    /**
-     * Create payment for mini-app
-     * 
-     * This endpoint allows any mini-app to create a payment with automatic commission calculation.
-     * 
-     * @param request Payment request with mini-app context
-     * @return Payment response with commission details
-     */
+    
     @PostMapping
     @Operation(
         summary = "Create mini-app payment",
@@ -100,9 +85,7 @@ public class MiniAppPaymentController {
         }
     }
 
-    /**
-     * Get payment by order ID
-     */
+    
     @GetMapping("/order/{orderId}")
     @Operation(
         summary = "Get payment by order ID",
@@ -122,9 +105,7 @@ public class MiniAppPaymentController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Get all payments for mini-app
-     */
+    
     @GetMapping("/{miniAppId}")
     @Operation(
         summary = "Get all payments for mini-app",
@@ -146,9 +127,7 @@ public class MiniAppPaymentController {
         return ResponseEntity.ok(payments);
     }
 
-    /**
-     * Get user payments in mini-app
-     */
+    
     @GetMapping("/{miniAppId}/user/{userId}")
     @Operation(
         summary = "Get user payments in mini-app",
@@ -172,9 +151,7 @@ public class MiniAppPaymentController {
         return ResponseEntity.ok(payments);
     }
 
-    /**
-     * Get total commission for mini-app
-     */
+    
     @GetMapping("/{miniAppId}/commission")
     @Operation(
         summary = "Get total commission for mini-app",
@@ -199,9 +176,7 @@ public class MiniAppPaymentController {
         ));
     }
 
-    /**
-     * Health check for payment platform
-     */
+    
     @GetMapping("/health")
     @Operation(
         summary = "Payment platform health check",

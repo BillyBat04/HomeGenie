@@ -18,18 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-/**
- * Unit Tests for MaintenanceService
- *
- * Test Coverage:
- * - Create maintenance request (with AI classification)
- * - Update request (assign technician, status change)
- * - Get requests (by ID, by user)
- * - AI classification fallback
- * - Email notifications
- * - Image upload
- * - Kafka event publishing
- */
+
 @ExtendWith(MockitoExtension.class)
 @SuppressWarnings("null")
 class MaintenanceServiceTest {
@@ -92,7 +81,7 @@ class MaintenanceServiceTest {
 
     @Test
     void testCreateRequest_Success() {
-        // Given
+        
         when(restTemplate.getForObject(anyString(), eq(UserResponse.class))).thenReturn(userResponse);
         when(aiService.classifyRequest(anyString(), anyString())).thenReturn(aiResponse);
         when(s3Service.uploadImage(anyString())).thenReturn(
@@ -101,10 +90,10 @@ class MaintenanceServiceTest {
         doNothing().when(emailService).notifyAdminNewRequest(anyString(), anyString(), anyString(), anyString(), anyLong());
         doNothing().when(eventPublisher).publishMaintenanceCreatedEvent(any());
 
-        // When
+        
         MaintenanceResponseDTO response = maintenanceService.createRequest(1L, requestDTO);
 
-        // Then
+        
         assertNotNull(response);
         assertEquals(1L, response.getId());
         assertEquals("Water leaking from bathroom", response.getTitle());
@@ -121,7 +110,7 @@ class MaintenanceServiceTest {
 
     @Test
     void testCreateRequest_ImageUploadFails_ContinuesWithoutImage() {
-        // Given
+        
         when(restTemplate.getForObject(anyString(), eq(UserResponse.class))).thenReturn(userResponse);
         when(aiService.classifyRequest(anyString(), anyString())).thenReturn(aiResponse);
         when(s3Service.uploadImage(anyString())).thenThrow(new RuntimeException("S3 upload failed"));
@@ -137,10 +126,10 @@ class MaintenanceServiceTest {
 
         when(repository.save(any(MaintenanceRequest.class))).thenReturn(requestWithoutImage);
 
-        // When
+        
         MaintenanceResponseDTO response = maintenanceService.createRequest(1L, requestDTO);
 
-        // Then
+        
         assertNotNull(response);
         assertNull(response.getImageUrl());
         verify(s3Service, times(1)).uploadImage(anyString());
@@ -149,7 +138,7 @@ class MaintenanceServiceTest {
 
     @Test
     void testUpdateRequest_AssignTechnician_Success() {
-        // Given
+        
         UpdateRequestDTO updateDTO = new UpdateRequestDTO();
         updateDTO.setAssignedTo(2L);
 
@@ -162,10 +151,10 @@ class MaintenanceServiceTest {
         when(restTemplate.getForObject(anyString(), eq(UserResponse.class))).thenReturn(technicianResponse);
         when(repository.save(any(MaintenanceRequest.class))).thenReturn(request);
 
-        // When
+        
         MaintenanceResponseDTO response = maintenanceService.updateRequest(1L, updateDTO);
 
-        // Then
+        
         assertNotNull(response);
         verify(repository, times(1)).findById(1L);
         verify(repository, times(1)).save(any(MaintenanceRequest.class));
@@ -177,7 +166,7 @@ class MaintenanceServiceTest {
 
     @Test
     void testUpdateRequest_StatusChange_Success() {
-        // Given
+        
         UpdateRequestDTO updateDTO = new UpdateRequestDTO();
         updateDTO.setStatus(Status.COMPLETED);
 
@@ -185,10 +174,10 @@ class MaintenanceServiceTest {
         when(restTemplate.getForObject(anyString(), eq(UserResponse.class))).thenReturn(userResponse);
         when(repository.save(any(MaintenanceRequest.class))).thenReturn(request);
 
-        // When
+        
         MaintenanceResponseDTO response = maintenanceService.updateRequest(1L, updateDTO);
 
-        // Then
+        
         assertNotNull(response);
         verify(repository, times(1)).save(argThat(req ->
             req.getStatus() == Status.COMPLETED && req.getResolvedAt() != null
@@ -198,13 +187,13 @@ class MaintenanceServiceTest {
 
     @Test
     void testGetRequestById_Success() {
-        // Given
+        
         when(repository.findById(anyLong())).thenReturn(Optional.of(request));
 
-        // When
+        
         MaintenanceResponseDTO response = maintenanceService.getRequestById(1L);
 
-        // Then
+        
         assertNotNull(response);
         assertEquals(1L, response.getId());
         assertEquals("Water leaking from bathroom", response.getTitle());
@@ -213,10 +202,10 @@ class MaintenanceServiceTest {
 
     @Test
     void testGetRequestById_NotFound_ThrowsException() {
-        // Given
+        
         when(repository.findById(anyLong())).thenReturn(Optional.empty());
 
-        // When & Then
+        
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             maintenanceService.getRequestById(999L);
         });

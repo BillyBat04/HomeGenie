@@ -8,11 +8,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * Payment Platform API Response DTO
- * 
- * Maps from Payment Service MiniAppPaymentResponse
- */
+
 @Data
 @Builder
 @NoArgsConstructor

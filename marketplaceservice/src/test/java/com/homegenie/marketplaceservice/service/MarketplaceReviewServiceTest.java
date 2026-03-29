@@ -31,11 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-/**
- * Unit tests for MarketplaceReviewService
- * 
- * Tests review submission, rating validation, and provider rating auto-update
- */
+
 @ExtendWith(MockitoExtension.class)
 @SuppressWarnings("null")
 class MarketplaceReviewServiceTest {
@@ -59,7 +55,7 @@ class MarketplaceReviewServiceTest {
     private MarketplaceProvider testProvider;
     private MarketplaceReview testReview;
 
-    /** Build a JwtAuthenticationToken whose 'userId' claim matches testBooking.userId. */
+    
     private void setAuthenticatedUser(Long userId) {
         Jwt jwt = Jwt.withTokenValue("test-token")
                 .header("alg", "HS256")
@@ -116,13 +112,13 @@ class MarketplaceReviewServiceTest {
                 .build();
         
         ReflectionTestUtils.setField(reviewService, "miniAppId", "marketplace");
-        // Default: act as user 100 (matches testBooking.userId)
+        
         setAuthenticatedUser(100L);
     }
     
     @Test
     void testCreateReview_Success() {
-        // Given
+        
         CreateReviewRequest request = CreateReviewRequest.builder()
                 .bookingId(1L)
                 .userId(100L)
@@ -138,22 +134,22 @@ class MarketplaceReviewServiceTest {
         when(providerRepository.findById(1L)).thenReturn(Optional.of(testProvider));
         when(providerRepository.save(any(MarketplaceProvider.class))).thenReturn(testProvider);
         
-        // When
+        
         ReviewResponseDTO result = reviewService.createReview(request);
         
-        // Then
+        
         assertNotNull(result);
         assertEquals(1L, result.getId());
         assertEquals(5, result.getRating());
         assertEquals("Excellent service!", result.getTitle());
         
-        // Verify provider rating updated
+        
         verify(providerRepository).save(argThat(provider -> 
             provider.getAverageRating() != null &&
             provider.getTotalReviews() > 0
         ));
         
-        // Verify Kafka event published
+        
         ArgumentCaptor<ReviewEvent> eventCaptor = ArgumentCaptor.forClass(ReviewEvent.class);
         verify(kafkaTemplate).send(eq("marketplace.review.events"), eventCaptor.capture());
         
@@ -165,7 +161,7 @@ class MarketplaceReviewServiceTest {
     
     @Test
     void testCreateReview_BookingNotCompleted() {
-        // Given
+        
         testBooking.setStatus(BookingStatus.IN_PROGRESS);
         
         CreateReviewRequest request = CreateReviewRequest.builder()
@@ -177,7 +173,7 @@ class MarketplaceReviewServiceTest {
         
         when(bookingRepository.findById(1L)).thenReturn(Optional.of(testBooking));
         
-        // When & Then
+        
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
                 () -> reviewService.createReview(request)
@@ -189,7 +185,7 @@ class MarketplaceReviewServiceTest {
     
     @Test
     void testCreateReview_DuplicateReview() {
-        // Given
+        
         CreateReviewRequest request = CreateReviewRequest.builder()
                 .bookingId(1L)
                 .userId(100L)
@@ -200,8 +196,8 @@ class MarketplaceReviewServiceTest {
         when(bookingRepository.findById(1L)).thenReturn(Optional.of(testBooking));
         when(reviewRepository.existsByBookingId(1L)).thenReturn(true);
         
-        // When & Then
-        // BUG FIX: service throws DuplicateReviewException, not IllegalStateException
+        
+        
         assertThrows(
                 DuplicateReviewException.class,
                 () -> reviewService.createReview(request)
@@ -212,32 +208,32 @@ class MarketplaceReviewServiceTest {
     
     @Test
     void testCreateReview_InvalidRating_TooLow() {
-        // Given - Test that rating validation works at entity level
-        // No repository mocking needed - this tests entity validation only
         
-        // Create review entity directly to test validation
+        
+        
+        
         MarketplaceReview review = MarketplaceReview.builder()
-                .rating(0) // Invalid: below 1
+                .rating(0) 
                 .build();
         
-        // Verify rating constraint (1-5)
+        
         assertFalse(review.isValidRating());
     }
     
     @Test
     void testCreateReview_InvalidRating_TooHigh() {
-        // Given
+        
         MarketplaceReview review = MarketplaceReview.builder()
-                .rating(6) // Invalid: above 5
+                .rating(6) 
                 .build();
         
-        // Then
+        
         assertFalse(review.isValidRating());
     }
     
     @Test
     void testCreateReview_ValidRatings() {
-        // Test all valid ratings (1-5)
+        
         for (int rating = 1; rating <= 5; rating++) {
             MarketplaceReview review = MarketplaceReview.builder()
                     .rating(rating)
@@ -249,7 +245,7 @@ class MarketplaceReviewServiceTest {
     
     @Test
     void testProviderRatingUpdate_FirstReview() {
-        // Given
+        
         testProvider.setAverageRating(null);
         testProvider.setTotalReviews(0);
         
@@ -268,10 +264,10 @@ class MarketplaceReviewServiceTest {
         ArgumentCaptor<MarketplaceProvider> providerCaptor = ArgumentCaptor.forClass(MarketplaceProvider.class);
         when(providerRepository.save(providerCaptor.capture())).thenReturn(testProvider);
         
-        // When
+        
         reviewService.createReview(request);
         
-        // Then
+        
         MarketplaceProvider savedProvider = providerCaptor.getValue();
         assertNotNull(savedProvider.getAverageRating());
         assertEquals(1, savedProvider.getTotalReviews());
@@ -279,7 +275,7 @@ class MarketplaceReviewServiceTest {
     
     @Test
     void testProviderRatingUpdate_MultipleReviews() {
-        // Given - Provider already has 1 review with rating 4.0
+        
         testProvider.setAverageRating(BigDecimal.valueOf(4.0));
         testProvider.setTotalReviews(1);
         
@@ -287,7 +283,7 @@ class MarketplaceReviewServiceTest {
                 .bookingId(1L)
                 .userId(100L)
                 .providerId(1L)
-                .rating(5) // New 5-star review
+                .rating(5) 
                 .build();
         
         when(bookingRepository.findById(1L)).thenReturn(Optional.of(testBooking));
@@ -298,24 +294,24 @@ class MarketplaceReviewServiceTest {
         ArgumentCaptor<MarketplaceProvider> providerCaptor = ArgumentCaptor.forClass(MarketplaceProvider.class);
         when(providerRepository.save(providerCaptor.capture())).thenReturn(testProvider);
         
-        // When
+        
         reviewService.createReview(request);
         
-        // Then - Average should be (4.0 + 5.0) / 2 = 4.5
+        
         MarketplaceProvider savedProvider = providerCaptor.getValue();
         assertEquals(2, savedProvider.getTotalReviews());
-        // Rating calculation happens in entity's updateRating method
+        
     }
     
     @Test
     void testGetReviewByBookingId_Found() {
-        // Given
+        
         when(reviewRepository.findByBookingId(1L)).thenReturn(Optional.of(testReview));
         
-        // When
+        
         ReviewResponseDTO result = reviewService.getReviewByBookingId(1L);
         
-        // Then
+        
         assertNotNull(result);
         assertEquals(1L, result.getId());
         assertEquals(5, result.getRating());
@@ -323,13 +319,13 @@ class MarketplaceReviewServiceTest {
     
     @Test
     void testGetReviewByBookingId_NotFound() {
-        // Given
+        
         when(reviewRepository.findByBookingId(999L)).thenReturn(Optional.empty());
         
-        // When
+        
         ReviewResponseDTO result = reviewService.getReviewByBookingId(999L);
         
-        // Then
+        
         assertNull(result);
     }
 }

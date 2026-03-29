@@ -15,18 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * Platform Identity API Controller
- * 
- * ✅ BACKWARD COMPATIBLE with User Service AuthController
- * Endpoint mapping:
- * - /platform/identity/v1/authenticate → /api/auth/login (User Service)
- * - /platform/identity/v1/register → /api/auth/register (User Service)
- * - /platform/identity/v1/refresh → /api/auth/refresh (User Service)
- * - /platform/identity/v1/logout → /api/auth/logout (User Service)
- * 
- * Response schemas are IDENTICAL to ensure zero breaking changes
- */
+
 @RestController
 @RequestMapping("/platform/identity/v1")
 @RequiredArgsConstructor
@@ -37,10 +26,7 @@ public class PlatformIdentityController {
     private final IdentityService identityService;
     private final TokenService tokenService;
 
-    /**
-     * Register new user (Platform API)
-     * ✅ Compatible with: POST /api/auth/register (User Service)
-     */
+    
     @PostMapping("/register")
     @Operation(
         summary = "Register new user (Platform API)",
@@ -74,11 +60,8 @@ public class PlatformIdentityController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Authenticate user (Platform API)
-     * ✅ Compatible with: POST /api/auth/login (User Service)
-     */
-    // /login alias kept for backward compatibility with clients that used userservice /api/auth/login
+    
+    
     @PostMapping({"/authenticate", "/login"})
     @Operation(
         summary = "Authenticate user (Platform API)",
@@ -111,10 +94,7 @@ public class PlatformIdentityController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Refresh access token (Platform API)
-     * ✅ Compatible with: POST /api/auth/refresh (User Service)
-     */
+    
     @PostMapping("/refresh")
     @Operation(
         summary = "Refresh access token (Platform API)",
@@ -147,10 +127,7 @@ public class PlatformIdentityController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Logout user (Platform API)
-     * ✅ Compatible with: POST /api/auth/logout (User Service)
-     */
+    
     @PostMapping("/logout")
     @Operation(
         summary = "Logout user (Platform API)",
@@ -179,10 +156,7 @@ public class PlatformIdentityController {
         return ResponseEntity.ok("Logged out successfully");
     }
 
-    /**
-     * Get user by ID (Platform API)
-     * ✅ Compatible with: GET /api/users/{id} (User Service)
-     */
+    
     @GetMapping("/users/{userId}")
     @Operation(
         summary = "Get user by ID (Platform API)",
@@ -214,9 +188,7 @@ public class PlatformIdentityController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Health check endpoint
-     */
+    
     @GetMapping("/health")
     @Operation(summary = "Health check", description = "Check if Identity Service is healthy")
     public ResponseEntity<String> health() {

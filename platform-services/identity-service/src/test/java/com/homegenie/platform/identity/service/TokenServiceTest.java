@@ -36,7 +36,7 @@ class TokenServiceTest {
     @InjectMocks
     private TokenService tokenService;
 
-    // 7 days in milliseconds
+    
     private static final long REFRESH_EXPIRATION_MS = 604_800_000L;
 
     @BeforeEach
@@ -44,7 +44,7 @@ class TokenServiceTest {
         ReflectionTestUtils.setField(tokenService, "refreshTokenExpiration", REFRESH_EXPIRATION_MS);
     }
 
-    // ---- fixture helpers -----------------------------------------------
+    
 
     private User activeUser() {
         User u = new User();
@@ -67,9 +67,9 @@ class TokenServiceTest {
                 .build();
     }
 
-    // ====================================================================
-    // createRefreshToken()
-    // ====================================================================
+    
+    
+    
 
     @Test
     void createRefreshToken_savesAndReturnsToken() {
@@ -80,7 +80,7 @@ class TokenServiceTest {
         assertNotNull(result.getToken());
         assertEquals(1L, result.getUserId());
         assertFalse(result.isRevoked());
-        // expiresAt should be roughly 7 days from now
+        
         assertTrue(result.getExpiresAt().isAfter(LocalDateTime.now().plusDays(6)));
 
         verify(refreshTokenRepository).save(any(RefreshToken.class));
@@ -93,13 +93,13 @@ class TokenServiceTest {
         RefreshToken t1 = tokenService.createRefreshToken(1L);
         RefreshToken t2 = tokenService.createRefreshToken(1L);
 
-        // Two tokens for the same user must have different values
+        
         assertNotEquals(t1.getToken(), t2.getToken());
     }
 
-    // ====================================================================
-    // refreshToken()
-    // ====================================================================
+    
+    
+    
 
     @Test
     void refreshToken_success_rotatesTokenAndReturnsNewJwt() {
@@ -114,16 +114,16 @@ class TokenServiceTest {
 
         TokenRefreshResponse res = tokenService.refreshToken("valid-refresh-token");
 
-        // New JWT returned
+        
         assertEquals("new-jwt", res.getToken());
         assertEquals("Bearer", res.getTokenType());
-        assertNotNull(res.getRefreshToken()); // new refresh token issued
+        assertNotNull(res.getRefreshToken()); 
 
-        // Old token must be marked revoked → verify the save captured a revoked token
+        
         ArgumentCaptor<RefreshToken> captor = ArgumentCaptor.forClass(RefreshToken.class);
         verify(refreshTokenRepository, atLeast(2)).save(captor.capture());
         List<RefreshToken> saved = captor.getAllValues();
-        // First save = revoked old token
+        
         assertTrue(saved.get(0).isRevoked());
         assertNotNull(saved.get(0).getRevokedAt());
     }
@@ -153,7 +153,7 @@ class TokenServiceTest {
                 .id(2L)
                 .token("expired-token")
                 .userId(1L)
-                .expiresAt(LocalDateTime.now().minusHours(1)) // already expired
+                .expiresAt(LocalDateTime.now().minusHours(1)) 
                 .revoked(false)
                 .build();
 
@@ -184,9 +184,9 @@ class TokenServiceTest {
                 () -> tokenService.refreshToken("valid-refresh-token"));
     }
 
-    // ====================================================================
-    // revokeRefreshToken()  — logout
-    // ====================================================================
+    
+    
+    
 
     @Test
     void revokeRefreshToken_marksTokenRevoked() {
@@ -210,9 +210,9 @@ class TokenServiceTest {
                 () -> tokenService.revokeRefreshToken("ghost"));
     }
 
-    // ====================================================================
-    // revokeAllUserTokens()
-    // ====================================================================
+    
+    
+    
 
     @Test
     void revokeAllUserTokens_revokesEveryActiveToken() {
@@ -226,7 +226,7 @@ class TokenServiceTest {
 
         tokenService.revokeAllUserTokens(1L);
 
-        // Both tokens must be saved as revoked
+        
         ArgumentCaptor<RefreshToken> captor = ArgumentCaptor.forClass(RefreshToken.class);
         verify(refreshTokenRepository, times(2)).save(captor.capture());
         captor.getAllValues().forEach(t -> {

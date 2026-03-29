@@ -8,17 +8,13 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * Base Booking Event for Kafka
- * 
- * Published to topic: marketplace.booking.events
- */
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class BookingEvent {
-    private String eventType; // CREATED, CONFIRMED, STARTED, COMPLETED, CANCELLED
+    private String eventType; 
     private Long bookingId;
     private Long userId;
     private Long providerId;

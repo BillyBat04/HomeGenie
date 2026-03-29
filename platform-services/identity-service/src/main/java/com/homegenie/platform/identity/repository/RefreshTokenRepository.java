@@ -7,11 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * RefreshToken Repository
- * ✅ IDENTICAL to User Service RefreshTokenRepository
- * Queries shared database table: refresh_tokens
- */
+
 @Repository
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
     

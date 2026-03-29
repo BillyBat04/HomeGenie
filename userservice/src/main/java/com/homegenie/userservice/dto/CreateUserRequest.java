@@ -5,11 +5,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
-/**
- * Request DTO for creating a user profile.
- * Called by identity-service after a user completes registration.
- * Credentials (password) are managed exclusively by identity-service.
- */
+
 @Data
 @Schema(description = "User profile creation request (internal, from identity-service)")
 public class CreateUserRequest {

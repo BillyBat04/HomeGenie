@@ -7,14 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
-/**
- * RefreshToken Entity
- * ✅ IDENTICAL to User Service RefreshToken entity
- * Shared database table: refresh_tokens
- * 
- * IMPORTANT: Do NOT modify this entity structure!
- * Any changes must be synchronized with User Service
- */
+
 @Entity
 @Table(name = "refresh_tokens", indexes = {
     @Index(name = "idx_refresh_token", columnList = "token"),

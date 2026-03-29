@@ -1,8 +1,6 @@
 package com.homegenie.maintenanceservice.model;
 
-/**
- * Type of maintenance request
- */
+
 public enum RequestType {
     /**
      * Scheduled/preventive maintenance for an item

@@ -28,9 +28,7 @@ public class IntentRecognitionService {
     @Value("${voice.assistant.timeout:30000}")
     private int timeout;
 
-    /**
-     * Recognize user intent from transcribed text using AI
-     */
+    
     public Mono<IntentResult> recognizeIntent(String text, Long userId, String context) {
         log.info("Recognizing intent for user {}: {}", userId, text);
 

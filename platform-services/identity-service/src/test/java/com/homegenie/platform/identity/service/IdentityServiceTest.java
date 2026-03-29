@@ -62,7 +62,7 @@ class IdentityServiceTest {
                 .build();
     }
 
-    // register()
+    
     @Test
     void register_success_returnsAuthResponse() {
         RegisterRequest req = new RegisterRequest(
@@ -150,13 +150,13 @@ class IdentityServiceTest {
 
         identityService.register(req);
 
-        // Capture the User passed to save() and verify specialty was set
+        
         verify(userRepository).save(argThat(u ->
                 u.getRole() == UserRole.TECHNICIAN && "Plumbing".equals(u.getSpecialty())
         ));
     }
 
-    // authenticate()
+    
     @Test
     void authenticate_success_returnsAuthResponse() {
         User user = activeUser();
@@ -208,7 +208,7 @@ class IdentityServiceTest {
     }
 
 
-    // getUserById()
+    
 
     @Test
     void getUserById_found_returnsUserResponse() {
@@ -231,7 +231,7 @@ class IdentityServiceTest {
         assertThrows(UserNotFoundException.class, () -> identityService.getUserById(99L));
     }
 
-    // getUserByEmail()
+    
 
     @Test
     void getUserByEmail_found_returnsUser() {

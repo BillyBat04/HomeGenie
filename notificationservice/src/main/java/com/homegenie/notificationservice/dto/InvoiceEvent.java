@@ -8,9 +8,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * Invoice event from Payment Service via Kafka
- */
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -25,9 +23,9 @@ public class InvoiceEvent {
     private BigDecimal tax;
     private BigDecimal lateFee;
     private BigDecimal totalAmount;
-    private String status; // SENT, OVERDUE, PAID
+    private String status; 
     private LocalDateTime dueDate;
     private LocalDateTime paidDate;
     private LocalDateTime eventTime;
-    private String eventType; // INVOICE_SENT, INVOICE_OVERDUE, INVOICE_PAID
+    private String eventType; 
 }

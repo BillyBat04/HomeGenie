@@ -8,9 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
-/**
- * Provider summary DTO for list view
- */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

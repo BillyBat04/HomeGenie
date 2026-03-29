@@ -407,11 +407,8 @@ public class NotificationService {
         return restTemplate.getForObject(url, UserResponse.class);
     }
 
-    /**
-     * Fallback when User Service is unavailable.
-     * Returns a minimal stub so notification pipeline degrades gracefully.
-     */
-    @SuppressWarnings("unused") // invoked by Resilience4j AOP
+    
+    @SuppressWarnings("unused") 
     private UserResponse getUserDetailsFallback(Long userId, Exception ex) {
         log.warn("Circuit breaker OPEN for User Service. userId={}, cause={}", userId, ex.getMessage());
         UserResponse stub = new UserResponse();
@@ -421,10 +418,7 @@ public class NotificationService {
         return stub;
     }
 
-    /**
-     * Send maintenance reminder email to the item owner.
-     * Triggered by a message on the 'maintenance-reminder' Kafka topic.
-     */
+    
     @Async
     @Transactional
     public void sendMaintenanceReminder(com.homegenie.notificationservice.dto.MaintenanceReminderEvent event) {
@@ -448,7 +442,7 @@ public class NotificationService {
                     .htmlContent(htmlContent)
                     .userId(event.getUserId())
                     .templateId("maintenance-reminder")
-                    .eventId(event.getEventId())   // stored for idempotency
+                    .eventId(event.getEventId())   
                     .maxRetries(maxRetryAttempts)
                     .build();
 
@@ -459,10 +453,7 @@ public class NotificationService {
         }
     }
 
-    /**
-     * Send warranty expiry alert email to the item owner.
-     * Triggered by a message on the 'warranty-reminder' Kafka topic.
-     */
+    
     @Async
     @Transactional
     public void sendWarrantyExpiryAlert(com.homegenie.notificationservice.dto.WarrantyExpiringEvent event) {
@@ -486,7 +477,7 @@ public class NotificationService {
                     .htmlContent(htmlContent)
                     .userId(event.getUserId())
                     .templateId("warranty-expiry")
-                    .eventId(event.getEventId())   // stored for idempotency
+                    .eventId(event.getEventId())   
                     .maxRetries(maxRetryAttempts)
                     .build();
 

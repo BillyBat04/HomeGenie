@@ -19,9 +19,9 @@ public class AIClassificationService {
     @Value("${huggingface.api.token:}")
     private String huggingFaceToken;
 
-    // Injected for test compatibility via ReflectionTestUtils.
-    // Not used in this service directly (Gemini SDK is configured in python-voice-service),
-    // but the test suite sets this field to verify AI provider switching logic.
+    
+    
+    
     @Value("${gemini.api.key:}")
     private String geminiApiKey;
 
@@ -64,7 +64,7 @@ public class AIClassificationService {
     public AIClassificationResponse classifyRequest(String title, String description) {
         String combinedText = (title + " " + description).toLowerCase();
 
-        // Try AI classification first (if API token is available)
+        
         if (huggingFaceToken != null && !huggingFaceToken.isEmpty() && !huggingFaceToken.isBlank()) {
             try {
                 log.info("Attempting AI classification with Hugging Face...");

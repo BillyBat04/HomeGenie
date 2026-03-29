@@ -77,9 +77,7 @@ public class TrafficSplitFilter extends AbstractGatewayFilterFactory<TrafficSpli
         }
     }
 
-    /**
-     * Convert User Service path to Identity Service path
-     */
+    
     private String convertToIdentityServicePath(String userServicePath) {
         return userServicePath
             .replace("/api/auth/register", "/platform/identity/v1/register")
@@ -88,9 +86,7 @@ public class TrafficSplitFilter extends AbstractGatewayFilterFactory<TrafficSpli
             .replace("/api/auth/logout", "/platform/identity/v1/logout");
     }
 
-    /**
-     * Check if request is an authentication request
-     */
+    
     private boolean isAuthenticationRequest(String path) {
         return path.startsWith("/api/auth/register") ||
                path.startsWith("/api/auth/login") ||
@@ -99,6 +95,6 @@ public class TrafficSplitFilter extends AbstractGatewayFilterFactory<TrafficSpli
     }
 
     public static class Config {
-        // Configuration properties
+        
     }
 }

@@ -11,9 +11,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * Booking response DTO
- */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -47,7 +45,7 @@ public class BookingResponseDTO {
     private LocalDateTime updatedAt;
     private LocalDateTime completedAt;
     
-    // Nested DTOs (optional)
+    
     private ProviderSummaryDTO provider;
     private ServiceSummaryDTO service;
 }

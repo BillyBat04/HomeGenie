@@ -19,19 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * Marketplace Booking Service
- * 
- * Core business logic for booking management.
- * Integrates with Payment Platform v2 and Notification Platform v1.
- * 
- * Key flows:
- * 1. Create booking → PENDING status
- * 2. Confirm booking (after payment) → CONFIRMED status
- * 3. Start service → IN_PROGRESS status
- * 4. Complete service → COMPLETED status → Trigger review request
- * 5. Cancel booking → CANCELLED status → Refund if paid
- */
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -53,17 +41,12 @@ public class MarketplaceBookingService {
     @Value("${marketplace.mini-app-id}")
     private String miniAppId;
     
-    /**
-     * Create new booking (Step 1)
-     * Status: PENDING, Payment: PENDING
-     * 
-     * Frontend will call Payment Platform after this to get paymentId
-     */
+    
     @Transactional
     public BookingResponseDTO createBooking(CreateBookingRequest request) {
         log.info("Creating booking for serviceId={}, userId={}", request.getServiceId(), request.getUserId());
         
-        // 1. Validate service exists and is available
+        
         MarketplaceServiceEntity service = serviceRepository.findById(request.getServiceId())
                 .orElseThrow(() -> new IllegalArgumentException("Service not found: " + request.getServiceId()));
         
@@ -71,7 +54,7 @@ public class MarketplaceBookingService {
             throw new IllegalStateException("Service is not available: " + service.getStatus());
         }
         
-        // 2. Validate provider is active
+        
         MarketplaceProvider provider = providerRepository.findById(service.getProviderId())
                 .orElseThrow(() -> new IllegalArgumentException("Provider not found: " + service.getProviderId()));
         
@@ -79,7 +62,7 @@ public class MarketplaceBookingService {
             throw new IllegalStateException("Provider cannot accept bookings: " + provider.getStatus());
         }
         
-        // 3. Create booking entity
+        
         MarketplaceBooking booking = MarketplaceBooking.builder()
                 .userId(request.getUserId())
                 .serviceId(service.getId())
@@ -102,29 +85,23 @@ public class MarketplaceBookingService {
         
         MarketplaceBooking saved = bookingRepository.save(booking);
 
-        // Track total bookings per provider as soon as booking is created (not when completed).
-        // completedBookings is incremented separately in completeBooking().
+        
+        
         provider.setTotalBookings(provider.getTotalBookings() + 1);
         providerRepository.save(provider);
         
         log.info("Booking created successfully: id={}, status={}", saved.getId(), saved.getStatus());
         
-        // Publish BookingCreatedEvent to Kafka
+        
         publishBookingEvent("CREATED", saved);
         
-        // Send booking confirmation email to customer
+        
         sendBookingCreatedNotification(saved, provider, service);
         
         return mapToResponseDTO(saved, provider, service);
     }
     
-    /**
-     * Confirm booking after payment success (Step 2)
-     * Called by Payment Platform webhook or frontend after payment
-     * 
-     * Status: PENDING → CONFIRMED
-     * Payment: PENDING → PAID
-     */
+    
     @Transactional
     public BookingResponseDTO confirmBooking(Long bookingId, Long paymentId) {
         log.info("Confirming booking: bookingId={}, paymentId={}", bookingId, paymentId);
@@ -136,8 +113,8 @@ public class MarketplaceBookingService {
             throw new IllegalStateException("Booking cannot be confirmed in current status: " + booking.getStatus());
         }
 
-        // Verify payment is genuinely successful before confirming.
-        // Without this check anyone can pass a random paymentId to confirm for free.
+        
+        
         verifyPaymentSuccess(paymentId, bookingId);
 
         booking.confirm(paymentId);
@@ -145,19 +122,16 @@ public class MarketplaceBookingService {
         
         log.info("Booking confirmed successfully: id={}, paymentId={}", saved.getId(), saved.getPaymentId());
         
-        // Publish BookingConfirmedEvent to Kafka
+        
         publishBookingEvent("CONFIRMED", saved);
         
-        // Send notification to provider
+        
         sendBookingConfirmedNotification(saved);
         
         return mapToResponseDTO(saved);
     }
     
-    /**
-     * Start service (Step 3 - Provider action)
-     * Status: CONFIRMED → IN_PROGRESS
-     */
+    
     @Transactional
     public BookingResponseDTO startBooking(Long bookingId) {
         log.info("Starting booking: bookingId={}", bookingId);
@@ -170,21 +144,16 @@ public class MarketplaceBookingService {
         
         log.info("Booking started successfully: id={}", saved.getId());
         
-        // Publish BookingStartedEvent to Kafka
+        
         publishBookingEvent("STARTED", saved);
         
-        // Send notification to customer
+        
         sendBookingStartedNotification(saved);
         
         return mapToResponseDTO(saved);
     }
     
-    /**
-     * Complete service (Step 4 - Provider action)
-     * Status: IN_PROGRESS → COMPLETED
-     * 
-     * Triggers review request notification
-     */
+    
     @Transactional
     public BookingResponseDTO completeBooking(Long bookingId, BigDecimal finalPrice) {
         log.info("Completing booking: bookingId={}, finalPrice={}", bookingId, finalPrice);
@@ -195,30 +164,25 @@ public class MarketplaceBookingService {
         booking.complete(finalPrice);
         MarketplaceBooking saved = bookingRepository.save(booking);
         
-        // Update provider metrics
+        
         MarketplaceProvider provider = providerRepository.findById(booking.getProviderId())
                 .orElseThrow(() -> new IllegalArgumentException("Provider not found"));
         provider.setCompletedBookings(provider.getCompletedBookings() + 1);
-        // totalBookings already incremented in createBooking() — do NOT increment again here.
+        
         providerRepository.save(provider);
         
         log.info("Booking completed successfully: id={}", saved.getId());
         
-        // Publish BookingCompletedEvent to Kafka
+        
         publishBookingEvent("COMPLETED", saved);
         
-        // Send review request notification to customer
+        
         sendReviewRequestNotification(saved, provider);
         
         return mapToResponseDTO(saved);
     }
     
-    /**
-     * Cancel booking
-     * Status: PENDING/CONFIRMED → CANCELLED
-     * 
-     * If payment was made, initiate refund via Payment Platform
-     */
+    
     @Transactional
     public BookingResponseDTO cancelBooking(Long bookingId, String cancellationReason) {
         log.info("Cancelling booking: bookingId={}, reason={}", bookingId, cancellationReason);
@@ -227,8 +191,8 @@ public class MarketplaceBookingService {
                 .orElseThrow(() -> new IllegalArgumentException("Booking not found: " + bookingId));
         
         booking.cancel(cancellationReason);
-        // BUG FIX: if customer already paid, automatically mark for refund.
-        // Previously this was never called, leaving PAID bookings stuck in CANCELLED status.
+        
+        
         if (booking.getPaymentStatus() == PaymentStatus.PAID) {
             booking.refund();
         }
@@ -236,19 +200,17 @@ public class MarketplaceBookingService {
         
         log.info("Booking cancelled successfully: id={}", saved.getId());
         
-        // Publish BookingCancelledEvent to Kafka
+        
         publishBookingEvent("CANCELLED", saved);
         
-        // If payment was made, we should refund (but this is handled by Payment Platform webhook)
-        // Just send cancellation notifications
+        
+        
         sendBookingCancelledNotification(saved);
         
         return mapToResponseDTO(saved);
     }
     
-    /**
-     * Get booking by ID
-     */
+    
     public BookingResponseDTO getBookingById(Long bookingId) {
         MarketplaceBooking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Booking not found: " + bookingId));
@@ -256,40 +218,31 @@ public class MarketplaceBookingService {
         return mapToResponseDTO(booking);
     }
     
-    /**
-     * Get all bookings for user
-     */
+    
     public List<BookingResponseDTO> getBookingsByUserId(Long userId) {
         return bookingRepository.findByUserId(userId).stream()
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
     }
     
-    /**
-     * Get all bookings for provider
-     */
+    
     public List<BookingResponseDTO> getBookingsByProviderId(Long providerId) {
         return bookingRepository.findByProviderId(providerId).stream()
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
     }
     
-    /**
-     * Get upcoming bookings for provider
-     */
+    
     public List<BookingResponseDTO> getUpcomingBookingsForProvider(Long providerId) {
         return bookingRepository.findUpcomingBookingsForProvider(providerId, LocalDateTime.now()).stream()
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
     }
     
-    // ============================================================
-    // Private Helper Methods
-    // ============================================================
-    /**
-     * Call Payment Service to verify a payment is genuinely SUCCESS before confirming a booking.
-     * Throws IllegalStateException if payment cannot be verified.
-     */
+    
+    
+    
+    
     private void verifyPaymentSuccess(Long paymentId, Long bookingId) {
         try {
             String url = paymentServiceUrl + "/api/payments/" + paymentId;
@@ -302,25 +255,23 @@ public class MarketplaceBookingService {
                 throw new IllegalStateException(
                     "Payment " + paymentId + " is not successful (status=" + payment.getStatus() + ")");
             }
-            // Extra safety: make sure this payment belongs to this booking
+            
             if (payment.getOrderId() != null && !payment.getOrderId().equals(bookingId)) {
                 throw new IllegalStateException(
                     "Payment " + paymentId + " does not belong to booking " + bookingId);
             }
             log.info("Payment {} verified successfully for booking {}", paymentId, bookingId);
         } catch (IllegalStateException e) {
-            throw e; // re-throw our own validation errors as-is
+            throw e; 
         } catch (Exception e) {
-            // Payment Service is down or unreachable — fail closed (safe default: don't confirm without verification)
+            
             log.error("Could not verify payment {} with Payment Service: {}", paymentId, e.getMessage());
             throw new IllegalStateException(
                 "Unable to verify payment " + paymentId + ". Please try again later.");
         }
     }
 
-    /**
-     * Publish booking event to Kafka
-     */
+    
     private void publishBookingEvent(String eventType, MarketplaceBooking booking) {
         try {
             BookingEvent event = BookingEvent.builder()
@@ -344,13 +295,11 @@ public class MarketplaceBookingService {
             log.info("Published {} event for booking {}", eventType, booking.getId());
         } catch (Exception e) {
             log.error("Failed to publish booking event: {}", e.getMessage(), e);
-            // Don't fail the transaction due to event publishing error
+            
         }
     }
     
-    /**
-     * Send booking created notification to customer
-     */
+    
     private void sendBookingCreatedNotification(MarketplaceBooking booking, 
                                                   MarketplaceProvider provider,
                                                   MarketplaceServiceEntity service) {
@@ -386,9 +335,7 @@ public class MarketplaceBookingService {
         }
     }
     
-    /**
-     * Send booking confirmed notification to provider
-     */
+    
     private void sendBookingConfirmedNotification(MarketplaceBooking booking) {
         try {
             Map<String, Object> templateData = new HashMap<>();
@@ -399,7 +346,7 @@ public class MarketplaceBookingService {
             templateData.put("customerNotes", booking.getCustomerNotes());
             
             NotificationRequest notification = NotificationRequest.builder()
-                    .userId(booking.getProviderId()) // Provider's user ID
+                    .userId(booking.getProviderId()) 
                     .miniAppId(miniAppId)
                     .type("EMAIL")
                     .templateId("booking_confirmed_provider")
@@ -421,9 +368,7 @@ public class MarketplaceBookingService {
         }
     }
     
-    /**
-     * Send booking started notification to customer
-     */
+    
     private void sendBookingStartedNotification(MarketplaceBooking booking) {
         try {
             Map<String, Object> templateData = new HashMap<>();
@@ -453,9 +398,7 @@ public class MarketplaceBookingService {
         }
     }
     
-    /**
-     * Send review request notification to customer after completion
-     */
+    
     private void sendReviewRequestNotification(MarketplaceBooking booking, MarketplaceProvider provider) {
         try {
             Map<String, Object> templateData = new HashMap<>();
@@ -486,12 +429,10 @@ public class MarketplaceBookingService {
         }
     }
     
-    /**
-     * Send booking cancelled notification
-     */
+    
     private void sendBookingCancelledNotification(MarketplaceBooking booking) {
         try {
-            // Notify customer
+            
             Map<String, Object> templateData = new HashMap<>();
             templateData.put("bookingId", booking.getId());
             templateData.put("title", booking.getTitle());
@@ -514,7 +455,7 @@ public class MarketplaceBookingService {
                     String.class
             );
             
-            // Notify provider
+            
             NotificationRequest providerNotification = NotificationRequest.builder()
                     .userId(booking.getProviderId())
                     .miniAppId(miniAppId)
@@ -569,7 +510,7 @@ public class MarketplaceBookingService {
                                                  MarketplaceServiceEntity service) {
         BookingResponseDTO dto = mapToResponseDTO(booking);
         
-        // Add nested provider info
+        
         dto.setProvider(ProviderSummaryDTO.builder()
                 .id(provider.getId())
                 .name(provider.getName())
@@ -581,7 +522,7 @@ public class MarketplaceBookingService {
                 .profilePhotoUrl(provider.getProfilePhotoUrl())
                 .build());
         
-        // Add nested service info
+        
         dto.setService(ServiceSummaryDTO.builder()
                 .id(service.getId())
                 .name(service.getName())

@@ -21,10 +21,7 @@ public class VoiceAssistantController {
     private final VoiceConversationService conversationService;
     private final MaintenanceService maintenanceService;
 
-    /**
-     * Main voice interaction endpoint
-     * User uploads audio file -> AI processes -> Returns text + audio response
-     */
+    
     @PostMapping(value = "/interact", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Mono<ResponseEntity<VoiceInteractionResponse>> voiceInteraction(
             @RequestPart("audio") MultipartFile audioFile,
@@ -33,7 +30,7 @@ public class VoiceAssistantController {
 
         log.info("Voice interaction received from user: {}", userId);
 
-        // Generate conversation ID if not provided
+        
         if (conversationId == null) {
             conversationId = conversationService.generateConversationId(userId);
         }
@@ -55,10 +52,7 @@ public class VoiceAssistantController {
                 .map(ResponseEntity::ok);
     }
 
-    /**
-     * Text-based voice assistant interaction (no audio upload)
-     * Useful for testing or text-only interfaces
-     */
+    
     @PostMapping("/interact-text")
     public Mono<ResponseEntity<VoiceInteractionResponse>> textInteraction(
             @RequestBody VoiceInteractionRequest request,
@@ -75,9 +69,7 @@ public class VoiceAssistantController {
                 .map(ResponseEntity::ok);
     }
 
-    /**
-     * Get conversation history/context
-     */
+    
     @GetMapping("/conversation/{conversationId}")
     public ResponseEntity<ConversationContext> getConversation(
             @PathVariable String conversationId) {
@@ -88,27 +80,25 @@ public class VoiceAssistantController {
         return ResponseEntity.notFound().build();
     }
 
-    /**
-     * Core processing logic for voice/text queries
-     */
+    
     private Mono<VoiceInteractionResponse> processTextQuery(
             String text, Long userId, String conversationId) {
 
-        // Get conversation context
+        
         ConversationContext context = conversationService.getContext(conversationId);
         String contextString = conversationService.buildContextString(context);
 
-        // Step 1: Recognize intent
+        
         return intentRecognitionService.recognizeIntent(text, userId, contextString)
                 .flatMap(intent -> {
                     log.info("Recognized intent: {} with confidence: {}",
                             intent.getIntent(), intent.getConfidence());
 
-                    // Step 2: Handle based on intent
+                    
                     return handleIntent(intent, userId, conversationId, text);
                 })
                 .flatMap(response -> {
-                    // Step 3: Convert response to speech
+                    
                     return voiceProcessingService.textToSpeech(response.getTextResponse())
                             .map(tts -> {
                                 if (tts.getSuccess()) {
@@ -123,9 +113,7 @@ public class VoiceAssistantController {
                         conversationId));
     }
 
-    /**
-     * Handle different intents
-     */
+    
     private Mono<VoiceInteractionResponse> handleIntent(
             IntentResult intent, Long userId, String conversationId, String originalText) {
 
@@ -153,9 +141,7 @@ public class VoiceAssistantController {
         }
     }
 
-    /**
-     * Handle maintenance request creation
-     */
+    
     private Mono<VoiceInteractionResponse> handleCreateMaintenanceRequest(
             IntentResult intent, Long userId, String conversationId) {
 
@@ -181,7 +167,7 @@ public class VoiceAssistantController {
             return Mono.just(response);
         }
 
-        // Create the maintenance request
+        
         try {
             MaintenanceResponseDTO created = maintenanceService.createRequest(userId, dto);
 
@@ -210,15 +196,13 @@ public class VoiceAssistantController {
         }
     }
 
-    /**
-     * Handle status query
-     */
+    
     private Mono<VoiceInteractionResponse> handleStatusQuery(
             IntentResult intent, Long userId, String conversationId) {
 
         try {
             if (intent.getTicketId() != null) {
-                // Query specific ticket
+                
                 MaintenanceResponseDTO ticket = maintenanceService.getRequestById(intent.getTicketId());
 
                 String message = String.format(
@@ -235,7 +219,7 @@ public class VoiceAssistantController {
 
                 return Mono.just(createResponse(message, conversationId, intent));
             } else {
-                // List all user's recent requests
+                
                 return handleListRequests(userId, conversationId);
             }
         } catch (Exception e) {
@@ -246,9 +230,7 @@ public class VoiceAssistantController {
         }
     }
 
-    /**
-     * Handle list all requests
-     */
+    
     private Mono<VoiceInteractionResponse> handleListRequests(Long userId, String conversationId) {
         try {
             var requests = maintenanceService.getRequestsByUser(userId);
@@ -289,13 +271,11 @@ public class VoiceAssistantController {
         }
     }
 
-    /**
-     * Handle emergency situations
-     */
+    
     private Mono<VoiceInteractionResponse> handleEmergency(
             IntentResult intent, Long userId, String conversationId) {
 
-        // Create emergency request with CRITICAL priority
+        
         MaintenanceRequestDTO dto = intent.getExtractedData();
         if (dto != null) {
             try {
@@ -325,9 +305,7 @@ public class VoiceAssistantController {
                 conversationId, intent));
     }
 
-    /**
-     * Handle general inquiries
-     */
+    
     private Mono<VoiceInteractionResponse> handleGeneralInquiry(
             String query, String conversationId) {
 
@@ -338,9 +316,7 @@ public class VoiceAssistantController {
         return Mono.just(createResponse(response, conversationId, null));
     }
 
-    /**
-     * Helper methods
-     */
+    
     private VoiceInteractionResponse createResponse(
             String text, String conversationId, IntentResult intent) {
         VoiceInteractionResponse response = new VoiceInteractionResponse();

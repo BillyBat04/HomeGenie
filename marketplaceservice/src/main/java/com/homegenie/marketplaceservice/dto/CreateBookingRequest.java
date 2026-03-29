@@ -9,9 +9,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * Request DTO for creating booking
- */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -42,5 +40,5 @@ public class CreateBookingRequest {
     private BigDecimal serviceLocationLng;
     
     private String customerNotes;
-    private String imageUrlsJson; // JSON array
+    private String imageUrlsJson; 
 }

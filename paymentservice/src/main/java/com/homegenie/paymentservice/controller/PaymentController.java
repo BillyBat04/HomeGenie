@@ -33,14 +33,7 @@ public class PaymentController {
 
     private final PaymentService paymentService;
 
-    /**
-     * Create a new payment
-     * 
-     * BUSINESS RULE: Payment can only be created if maintenance request:
-     * 1. Has been assigned to a technician (not in PENDING status)
-     * 2. Status is IN_PROGRESS or COMPLETED
-     * 3. Payment hasn't been created yet for this request
-     */
+    
     @Operation(summary = "Create new payment", 
         description = "Create Stripe payment intent for maintenance request. " +
                       "Payment is only allowed if request has been assigned to technician " +
@@ -57,7 +50,7 @@ public class PaymentController {
             @RequestHeader("X-User-Id") Long authenticatedUserId,
             @Valid @RequestBody PaymentRequest request) {
         try {
-            // SECURITY: Validate authenticated user matches request user
+            
             if (!authenticatedUserId.equals(request.getUserId())) {
                 log.warn("Authorization failed: User {} attempted to create payment for user {}", 
                         authenticatedUserId, request.getUserId());
@@ -87,18 +80,14 @@ public class PaymentController {
         }
     }
     
-    /**
-     * Simple error response for payment operations
-     */
+    
     @Schema(description = "Error response")
     record ErrorResponse(
         @Schema(description = "Error message", example = "Cannot create payment for PENDING maintenance request")
         String message
     ) {}
 
-    /**
-     * Get payment by ID
-     */
+    
     @Operation(summary = "Get payment by ID", description = "Retrieve payment details by payment ID")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Payment found",
@@ -116,9 +105,7 @@ public class PaymentController {
         }
     }
 
-    /**
-     * Get payments by user ID
-     */
+    
     @Operation(summary = "Get user payments", description = "Retrieve all payments for specific user")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Payments retrieved",
@@ -130,9 +117,7 @@ public class PaymentController {
         return ResponseEntity.ok(payments);
     }
 
-    /**
-     * Get payment by request ID
-     */
+    
     @Operation(summary = "Get payment by request", description = "Retrieve payment for maintenance request")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Payment found",
@@ -150,9 +135,7 @@ public class PaymentController {
         }
     }
 
-    /**
-     * Get payments by status
-     */
+    
     @Operation(summary = "Get payments by status", description = "Filter payments by status (PENDING/COMPLETED/REFUNDED/CANCELLED)")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Payments retrieved",
@@ -171,9 +154,7 @@ public class PaymentController {
         }
     }
 
-    /**
-     * Refund a payment
-     */
+    
     @Operation(summary = "Refund payment", description = "Process full or partial refund via Stripe")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Refund successful",
@@ -198,9 +179,7 @@ public class PaymentController {
         }
     }
 
-    /**
-     * Cancel a payment
-     */
+    
     @Operation(summary = "Cancel payment", description = "Cancel pending payment via Stripe")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Payment cancelled",
@@ -223,9 +202,7 @@ public class PaymentController {
         }
     }
 
-    /**
-     * Confirm a payment (internal use, usually from webhook)
-     */
+    
     @Operation(summary = "Confirm payment", description = "Confirm payment intent (webhook callback)")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Payment confirmed",

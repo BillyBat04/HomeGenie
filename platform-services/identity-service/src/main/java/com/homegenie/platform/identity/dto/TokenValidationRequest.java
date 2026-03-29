@@ -5,9 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Token Validation Request (NEW - Platform API only)
- */
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor

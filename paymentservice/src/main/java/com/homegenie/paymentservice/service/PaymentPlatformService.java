@@ -19,13 +19,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
-/**
- * Payment Platform Service
- * Handles mini-app payment processing with commission tracking
- * 
- * @version 2.0.0
- * @since Payment Platform v2
- */
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -35,14 +29,7 @@ public class PaymentPlatformService {
     private final PaymentRepository paymentRepository;
     private final PaymentPlatformConfig platformConfig;
 
-    /**
-     * Create payment for mini-app with commission calculation
-     * 
-     * @param request Mini-app payment request
-     * @return Payment response with commission info
-     * @throws StripeException if Stripe API fails
-     * @throws IllegalArgumentException if mini-app not found/disabled
-     */
+    
     @Transactional
     public MiniAppPaymentResponse createMiniAppPayment(MiniAppPaymentRequest request) throws StripeException {
         log.info("Creating payment for mini-app: {} order: {}", request.getMiniAppId(), request.getOrderId());
@@ -94,9 +81,7 @@ public class PaymentPlatformService {
         return MiniAppPaymentResponse.fromPayment(payments.get(0));
     }
 
-    /**
-     * Get all payments for mini-app
-     */
+    
     public java.util.List<MiniAppPaymentResponse> getPaymentsByMiniApp(String miniAppId) {
         platformConfig.validateMiniApp(miniAppId);
         return paymentRepository.findByMiniAppId(miniAppId).stream()
@@ -104,9 +89,7 @@ public class PaymentPlatformService {
                 .toList();
     }
 
-    /**
-     * Get user payments in mini-app
-     */
+    
     public java.util.List<MiniAppPaymentResponse> getUserPaymentsInMiniApp(Long userId, String miniAppId) {
         platformConfig.validateMiniApp(miniAppId);
         return paymentRepository.findByUserIdAndMiniAppId(userId, miniAppId).stream()
@@ -114,9 +97,7 @@ public class PaymentPlatformService {
                 .toList();
     }
 
-    /**
-     * Calculate total commission for mini-app
-     */
+    
     public BigDecimal getTotalCommission(String miniAppId) {
         platformConfig.validateMiniApp(miniAppId);
         return paymentRepository.findByMiniAppId(miniAppId).stream()
@@ -125,9 +106,7 @@ public class PaymentPlatformService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    /**
-     * Create Stripe Payment Intent
-     */
+    
     private PaymentIntent createStripePaymentIntent(MiniAppPaymentRequest request, BigDecimal commission) 
             throws StripeException {
         
@@ -157,9 +136,7 @@ public class PaymentPlatformService {
         return paymentIntent;
     }
 
-    /**
-     * Convert metadata Map to JSON string
-     */
+    
     private String convertMetadataToJson(java.util.Map<String, Object> metadata) {
         if (metadata == null || metadata.isEmpty()) {
             return null;

@@ -1,8 +1,6 @@
 package com.homegenie.platform.identity.exception;
 
-/**
- * Exception thrown when user credentials are invalid
- */
+
 public class InvalidCredentialsException extends IdentityException {
     
     public InvalidCredentialsException() {

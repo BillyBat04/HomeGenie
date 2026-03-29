@@ -1,8 +1,6 @@
 package com.homegenie.platform.identity.exception;
 
-/**
- * Exception thrown when refresh token is invalid
- */
+
 public class InvalidRefreshTokenException extends IdentityException {
     
     public InvalidRefreshTokenException() {

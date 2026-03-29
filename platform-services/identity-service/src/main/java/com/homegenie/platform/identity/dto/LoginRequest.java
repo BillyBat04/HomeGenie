@@ -6,10 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Login Request DTO
- * ✅ IDENTICAL to User Service LoginRequest
- */
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor

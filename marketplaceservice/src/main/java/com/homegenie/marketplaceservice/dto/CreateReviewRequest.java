@@ -6,9 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Request DTO for creating review
- */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -34,5 +32,5 @@ public class CreateReviewRequest {
     
     private String comment;
     
-    private String photoUrlsJson; // JSON array
+    private String photoUrlsJson; 
 }

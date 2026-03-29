@@ -8,10 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-/**
- * Custom business metrics for User Service
- * Tracks user registration, authentication, and other business operations
- */
+
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -19,13 +16,13 @@ public class MetricsService {
 
     private final MeterRegistry registry;
 
-    // Counters
+    
     private Counter userRegisteredCounter;
     private Counter userLoginSuccessCounter;
     private Counter userLoginFailedCounter;
     private Counter userUpdatedCounter;
 
-    // Timers
+    
     private Timer registrationTimer;
     private Timer loginTimer;
 
@@ -33,7 +30,7 @@ public class MetricsService {
     public void init() {
         log.info("Initializing User Service custom metrics...");
 
-        // User registration metrics
+        
         userRegisteredCounter = Counter.builder("user_registered_total")
                 .description("Total number of users registered")
                 .tag("service", "user-service")
@@ -46,7 +43,7 @@ public class MetricsService {
                 .tag("operation", "registration")
                 .register(registry);
 
-        // User login metrics
+        
         userLoginSuccessCounter = Counter.builder("user_login_total")
                 .description("Total number of user login attempts")
                 .tag("service", "user-service")
@@ -67,7 +64,7 @@ public class MetricsService {
                 .tag("operation", "login")
                 .register(registry);
 
-        // User update metrics
+        
         userUpdatedCounter = Counter.builder("user_updated_total")
                 .description("Total number of user profile updates")
                 .tag("service", "user-service")
@@ -77,7 +74,7 @@ public class MetricsService {
         log.info("User Service custom metrics initialized successfully");
     }
 
-    // === Public methods to record metrics ===
+    
 
     public void recordUserRegistration() {
         userRegisteredCounter.increment();

@@ -46,7 +46,7 @@ public class SecurityConfig {
         return http
             .csrf(ServerHttpSecurity.CsrfSpec::disable)
             .authorizeExchange(exchanges -> exchanges
-                // These paths don't require a token
+                
                 .pathMatchers(
                     "/api/users/register",
                     "/api/users/login",

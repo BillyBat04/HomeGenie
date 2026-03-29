@@ -1,8 +1,6 @@
 package com.homegenie.maintenanceservice.model;
 
-/**
- * Status of a household item in the system
- */
+
 public enum ItemStatus {
     /**
      * Item is active and in use

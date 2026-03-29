@@ -65,9 +65,7 @@ public class ReminderTracker {
         }
     }
 
-    /**
-     * Get current cache statistics
-     */
+    
     public Map<String, Object> getStatistics() {
         cleanupIfNeeded();
         
@@ -87,9 +85,7 @@ public class ReminderTracker {
         );
     }
 
-    /**
-     * Manual cleanup (for testing or admin operations)
-     */
+    
     public void clearCache() {
         int size = reminderCache.size();
         reminderCache.clear();

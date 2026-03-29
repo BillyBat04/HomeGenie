@@ -21,21 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-/**
- * Unit Tests for NotificationService
- *
- * Test Coverage:
- * - Payment confirmation notification
- * - Payment failed notification
- * - Refund processed notification
- * - Invoice sent notification
- * - Invoice overdue notification
- * - Invoice paid notification
- * - Email sending success/failure
- * - Notification retry logic
- * - User details fetching
- * - Notification status updates
- */
+
 @ExtendWith(MockitoExtension.class)
 @SuppressWarnings("null")
 class NotificationServiceTest {
@@ -87,7 +73,7 @@ class NotificationServiceTest {
 
     @Test
     void testSendPaymentConfirmation_Success() {
-        // Given
+        
         when(restTemplate.getForObject(anyString(), eq(UserResponse.class)))
                 .thenReturn(userResponse);
         when(emailService.buildPaymentConfirmationEmail(anyString(), any(), anyString(),
@@ -97,10 +83,10 @@ class NotificationServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         doNothing().when(emailService).sendEmail(anyString(), anyString(), anyString());
 
-        // When
+        
         notificationService.sendPaymentConfirmation(paymentEvent);
 
-        // Then
+        
         ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepository, atLeastOnce()).save(notificationCaptor.capture());
 
@@ -120,7 +106,7 @@ class NotificationServiceTest {
 
     @Test
     void testSendPaymentFailed_Success() {
-        // Given
+        
         paymentEvent.setStatus("FAILED");
         paymentEvent.setFailureReason("Insufficient funds");
 
@@ -133,10 +119,10 @@ class NotificationServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         doNothing().when(emailService).sendEmail(anyString(), anyString(), anyString());
 
-        // When
+        
         notificationService.sendPaymentFailed(paymentEvent);
 
-        // Then
+        
         ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepository, atLeastOnce()).save(notificationCaptor.capture());
 
@@ -147,7 +133,7 @@ class NotificationServiceTest {
 
     @Test
     void testSendRefundProcessed_Success() {
-        // Given
+        
         when(restTemplate.getForObject(anyString(), eq(UserResponse.class)))
                 .thenReturn(userResponse);
         when(emailService.buildRefundProcessedEmail(anyString(), any(), anyString(),
@@ -157,10 +143,10 @@ class NotificationServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         doNothing().when(emailService).sendEmail(anyString(), anyString(), anyString());
 
-        // When
+        
         notificationService.sendRefundProcessed(paymentEvent);
 
-        // Then
+        
         ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepository, atLeastOnce()).save(notificationCaptor.capture());
 
@@ -170,7 +156,7 @@ class NotificationServiceTest {
 
     @Test
     void testSendInvoiceSent_Success() {
-        // Given
+        
         when(restTemplate.getForObject(anyString(), eq(UserResponse.class)))
                 .thenReturn(userResponse);
         when(emailService.buildInvoiceSentEmail(anyString(), anyString(), any(),
@@ -180,10 +166,10 @@ class NotificationServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         doNothing().when(emailService).sendEmail(anyString(), anyString(), anyString());
 
-        // When
+        
         notificationService.sendInvoiceSent(invoiceEvent);
 
-        // Then
+        
         ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepository, atLeastOnce()).save(notificationCaptor.capture());
 
@@ -194,7 +180,7 @@ class NotificationServiceTest {
 
     @Test
     void testSendInvoiceOverdue_Success() {
-        // Given
+        
         invoiceEvent.setLateFee(new BigDecimal("15.00"));
 
         when(restTemplate.getForObject(anyString(), eq(UserResponse.class)))
@@ -206,10 +192,10 @@ class NotificationServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         doNothing().when(emailService).sendEmail(anyString(), anyString(), anyString());
 
-        // When
+        
         notificationService.sendInvoiceOverdue(invoiceEvent);
 
-        // Then
+        
         ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepository, atLeastOnce()).save(notificationCaptor.capture());
 
@@ -219,7 +205,7 @@ class NotificationServiceTest {
 
     @Test
     void testSendInvoicePaid_Success() {
-        // Given
+        
         invoiceEvent.setPaymentId(1L);
         invoiceEvent.setPaidDate(LocalDateTime.now());
 
@@ -232,10 +218,10 @@ class NotificationServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         doNothing().when(emailService).sendEmail(anyString(), anyString(), anyString());
 
-        // When
+        
         notificationService.sendInvoicePaid(invoiceEvent);
 
-        // Then
+        
         ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepository, atLeastOnce()).save(notificationCaptor.capture());
 
@@ -245,7 +231,7 @@ class NotificationServiceTest {
 
     @Test
     void testSendPaymentConfirmation_EmailServiceFails_NotificationMarkedFailed() {
-        // Given
+        
         when(restTemplate.getForObject(anyString(), eq(UserResponse.class)))
                 .thenReturn(userResponse);
         when(emailService.buildPaymentConfirmationEmail(anyString(), any(), anyString(),
@@ -254,40 +240,40 @@ class NotificationServiceTest {
         when(notificationRepository.save(any(Notification.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        // Email service throws exception
+        
         doThrow(new RuntimeException("SMTP connection failed"))
                 .when(emailService).sendEmail(anyString(), anyString(), anyString());
 
-        // When
+        
         notificationService.sendPaymentConfirmation(paymentEvent);
 
-        // Then
+        
         ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepository, atLeastOnce()).save(notificationCaptor.capture());
 
-        // Should have saved at least twice (PENDING, then FAILED)
+        
         List<Notification> savedNotifications = notificationCaptor.getAllValues();
         assertTrue(savedNotifications.size() >= 2);
 
-        // Last save should be FAILED status
+        
         Notification finalNotification = savedNotifications.get(savedNotifications.size() - 1);
         assertEquals(Notification.NotificationStatus.FAILED, finalNotification.getStatus());
     }
 
     @Test
     void testSendPaymentConfirmation_UserNotFound_UsesDefaultUser() {
-        // Given
+        
         when(restTemplate.getForObject(anyString(), eq(UserResponse.class)))
                 .thenThrow(new RuntimeException("User not found"));
 
-        // Should not throw exception - continue with default values
+        
         when(emailService.buildPaymentConfirmationEmail(anyString(), any(), anyString(),
                 anyString(), anyLong(), anyString()))
                 .thenReturn("<html>Email</html>");
         when(notificationRepository.save(any(Notification.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        // When - Should not throw exception
+        
         assertDoesNotThrow(() -> {
             notificationService.sendPaymentConfirmation(paymentEvent);
         });
@@ -295,10 +281,10 @@ class NotificationServiceTest {
 
     @Test
     void testSendPaymentConfirmation_NullPaymentEvent_HandledGracefully() {
-        // Given
+        
         PaymentEvent nullEvent = null;
 
-        // When & Then - Should not throw exception
+        
         assertDoesNotThrow(() -> {
             notificationService.sendPaymentConfirmation(nullEvent);
         });
@@ -309,10 +295,10 @@ class NotificationServiceTest {
 
     @Test
     void testSendInvoiceSent_NullInvoiceEvent_HandledGracefully() {
-        // Given
+        
         InvoiceEvent nullEvent = null;
 
-        // When & Then
+        
         assertDoesNotThrow(() -> {
             notificationService.sendInvoiceSent(nullEvent);
         });

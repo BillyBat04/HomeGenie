@@ -44,9 +44,6 @@ public class MaintenanceService {
     private final MaintenanceEventPublisher eventPublisher;
     private final RestTemplate restTemplate;
     private final PaymentServiceClient paymentServiceClient;
-    // Used to open a NEW transaction inside afterCommit() callbacks and retry scheduler.
-    // afterCommit() runs outside the original transaction, so we need this to write back
-    // the payment result (SUCCESS / FAILED) to the DB in a fresh transaction.
     private final TransactionTemplate transactionTemplate;
 
     @Value("${user.service.url:http://localhost:8081}")
@@ -56,29 +53,25 @@ public class MaintenanceService {
     public MaintenanceResponseDTO createRequest(Long userId, MaintenanceRequestDTO dto) {
         log.info("Creating maintenance request for user: {}", userId);
 
-        // Get user details
         UserResponse user = getUserDetails(userId);
         
-        // CRITICAL FIX: Validate itemId if provided (ISSUE-002)
         if (dto.getItemId() != null) {
             log.info("Validating item {} for user {}", dto.getItemId(), userId);
             validateItemOwnership(dto.getItemId(), userId);
         }
 
-        // AI Classification
         AIClassificationResponse aiResult = aiService.classifyRequest(dto.getTitle(), dto.getDescription());
         log.info("AI Classification - Category: {}, Priority: {}", aiResult.getCategory(), aiResult.getPriority());
 
         MaintenanceRequest request = new MaintenanceRequest();
         request.setUserId(userId);
-        request.setItemId(dto.getItemId()); // Set itemId (can be null for ad-hoc requests)
+        request.setItemId(dto.getItemId());
         request.setTitle(dto.getTitle());
         request.setDescription(dto.getDescription());
         request.setCategory(aiResult.getCategory());
         request.setPriority(aiResult.getPriority());
         request.setStatus(Status.PENDING);
 
-        // Upload image if provided
         if (dto.getImageBase64() != null && !dto.getImageBase64().isEmpty()) {
             try {
                 String imageUrl = String.valueOf(s3Service.uploadImage(dto.getImageBase64()));
@@ -90,15 +83,10 @@ public class MaintenanceService {
 
         MaintenanceRequest saved = repository.save(request);
 
-        // 🔔 Publish MaintenanceCreatedEvent to Kafka AFTER the DB transaction commits.
-        // Why afterCommit? If Kafka fires before DB commit and the commit later fails,
-        // notification-service would process an event for a request that doesn't exist.
         final MaintenanceRequest savedRef = saved;
         final UserResponse userRef = user;
         afterCommit(() -> publishMaintenanceCreatedEvent(savedRef, userRef));
 
-        // Keep old email notification for backward compatibility (can be removed later)
-        // Send notification to admin
         try {
             emailService.notifyAdminNewRequest(
                     user.getFullName(),
@@ -172,15 +160,6 @@ public class MaintenanceService {
                 request.setResolvedAt(LocalDateTime.now());
                 log.info("Request marked as completed at: {}", request.getResolvedAt());
                 
-                // 💰 Payment is created AFTER the DB transaction commits.
-                // Why: making a network call inside @Transactional holds the DB connection
-                // open for the full duration of the HTTP request to payment-service.
-                // Under load this exhausts HikariCP's connection pool.
-                //
-                // Fix: set paymentStatus=PENDING now (saved to DB), then register an
-                // afterCommit() callback. That callback runs AFTER the connection is
-                // released and calls payment-service in a non-transactional context.
-                // A separate TransactionTemplate then updates status to SUCCESS or FAILED.
                 request.setPaymentStatus(PaymentStatus.PENDING);
 
                 final Long reqId = request.getId();
@@ -205,19 +184,15 @@ public class MaintenanceService {
                 log.info("Assigning technician ID: {} to request ID: {}", dto.getAssignedTo(), id);
                 request.setAssignedTo(dto.getAssignedTo());
 
-                // Change status to IN_PROGRESS if it was PENDING
                 if (request.getStatus() == Status.PENDING) {
                     log.info("Changing status from PENDING to IN_PROGRESS");
                     request.setStatus(Status.IN_PROGRESS);
                 }
 
-                // 🔔 Publish MaintenanceAssignedEvent to Kafka AFTER commit.
                 final MaintenanceRequest assignedRef = request;
                 final Long assignedTo = dto.getAssignedTo();
                 afterCommit(() -> publishMaintenanceAssignedEvent(assignedRef, assignedTo));
 
-                // Keep old email notification for backward compatibility (can be removed later)
-                // Send notification to new technician
                 try {
                     log.info("Fetching technician details for ID: {}", dto.getAssignedTo());
                     UserResponse technician = getUserDetails(dto.getAssignedTo());
@@ -257,7 +232,6 @@ public class MaintenanceService {
 
         MaintenanceRequest updated = repository.save(request);
 
-        // 🔔 Publish status-change events AFTER commit — same reason as above.
         if (oldStatus != updated.getStatus()) {
             final MaintenanceRequest updatedRef = updated;
             final Status capturedOldStatus = oldStatus;
@@ -269,8 +243,6 @@ public class MaintenanceService {
             });
         }
 
-        // Keep old email notification for backward compatibility (can be removed later)
-        // Send status change notification to resident if status changed
         if (oldStatus != updated.getStatus()) {
             try {
                 UserResponse resident = getUserDetails(updated.getUserId());
@@ -388,15 +360,6 @@ public class MaintenanceService {
         }
     }
 
-    // =====================================================
-    // PAYMENT (outside transaction)
-    // =====================================================
-
-    /**
-     * Called by afterCommit() when a request is marked COMPLETED.
-     * Runs outside the original @Transactional — the DB connection is already released.
-     * Updates paymentStatus to SUCCESS or FAILED via a fresh TransactionTemplate.
-     */
     private void processPayment(Long requestId, MiniAppPaymentRequest paymentReq) {
         PaymentStatus result;
         try {
@@ -419,13 +382,6 @@ public class MaintenanceService {
         });
     }
 
-    /**
-     * Retry scheduler: every 60 seconds, look for COMPLETED requests whose payment
-     * still hasn't succeeded (PENDING or FAILED) and attempt creation again.
-     *
-     * Why PENDING too? A pod restart between afterCommit registration and execution
-     * leaves the status as PENDING forever without this.
-     */
     @Scheduled(fixedDelayString = "${payment.retry.interval-ms:60000}")
     public void retryPendingPayments() {
         List<MaintenanceRequest> toRetry = transactionTemplate.execute(tx ->
@@ -450,19 +406,6 @@ public class MaintenanceService {
         }
     }
 
-    // =====================================================
-    // TRANSACTION SAFETY HELPER
-    // =====================================================
-
-    /**
-     * Run the given action only after the current DB transaction has committed.
-     * Used for both Kafka publishing and payment calls — both must NOT run inside
-     * the open transaction to avoid holding DB connections during network I/O.
-     *
-     * Guard: if no transaction is active (e.g. unit tests call the service method
-     * directly without @Transactional), run the action immediately instead of
-     * trying to register a synchronization (which would throw IllegalStateException).
-     */
     private void afterCommit(Runnable action) {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -472,13 +415,10 @@ public class MaintenanceService {
                         action.run();
                     } catch (Exception e) {
                         log.error("Failed to publish Kafka event after DB commit: {}", e.getMessage(), e);
-                        // The DB row exists but the Kafka message was lost.
-                        // In production you would use the Outbox pattern to guarantee delivery.
                     }
                 }
             });
         } else {
-            // No active transaction — run immediately (unit test context).
             try {
                 action.run();
             } catch (Exception e) {
@@ -486,10 +426,6 @@ public class MaintenanceService {
             }
         }
     }
-
-    // =====================================================
-    // EVENT PUBLISHING METHODS
-    // =====================================================
 
     private void publishMaintenanceCreatedEvent(MaintenanceRequest request, UserResponse user) {
         MaintenanceCreatedEvent event = MaintenanceCreatedEvent.builder()
@@ -606,10 +542,6 @@ public class MaintenanceService {
         }
     }
     
-    /**
-     * ISSUE-002 FIX: Validate that Item exists and belongs to the user
-     * Prevents referential integrity violations and cross-user item linking
-     */
     private void validateItemOwnership(Long itemId, Long userId) {
         try {
             String url = "http://localhost:8082/api/items/" + itemId;
@@ -624,7 +556,6 @@ public class MaintenanceService {
                 throw new IllegalArgumentException("Item not found or access denied: " + itemId);
             }
             
-            // Verify item belongs to user
             Map<String, Object> itemData = response.getBody();
             if (itemData == null) {
                 throw new IllegalArgumentException("Item not found: " + itemId);
@@ -644,20 +575,13 @@ public class MaintenanceService {
         }
     }
     
-    /**
-     * Create HTTP headers with userId for authentication
-     */
     private HttpHeaders createHeaders(Long userId) {
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-User-Id", userId.toString());
         return headers;
     }
     
-    /**
-     * Calculate maintenance service amount based on category and priority
-     */
     private BigDecimal calculateMaintenanceAmount(MaintenanceRequest request) {
-        // Base rates by category
         BigDecimal baseAmount = switch (request.getCategory()) {
             case PLUMBING -> new BigDecimal("75.00");
             case ELECTRICAL -> new BigDecimal("85.00");
@@ -669,7 +593,6 @@ public class MaintenanceService {
             case OTHERS -> new BigDecimal("50.00");
         };
         
-        // Priority multiplier
         BigDecimal multiplier = switch (request.getPriority()) {
             case CRITICAL -> new BigDecimal("2.0");
             case HIGH -> new BigDecimal("1.5");

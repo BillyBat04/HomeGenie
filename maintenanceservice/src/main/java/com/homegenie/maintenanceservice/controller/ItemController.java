@@ -22,12 +22,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-/**
- * REST Controller for Item Management
- * Provides CRUD operations and maintenance scheduling for household items
- * 
- * All endpoints require JWT authentication via X-User-Id header
- */
+
 @RestController
 @RequestMapping("/api/items")
 @RequiredArgsConstructor
@@ -38,9 +33,7 @@ public class ItemController {
 
     private final ItemService itemService;
 
-    /**
-     * POST /api/items - Create a new household item
-     */
+    
     @PostMapping
     @Operation(
         summary = "Create new household item",
@@ -73,9 +66,7 @@ public class ItemController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    /**
-     * GET /api/items - List user's items with optional filters
-     */
+    
     @GetMapping
     @Operation(
         summary = "List user's household items",
@@ -105,9 +96,7 @@ public class ItemController {
         return ResponseEntity.ok(items);
     }
 
-    /**
-     * GET /api/items/{id} - Get item details
-     */
+    
     @GetMapping("/{id}")
     @Operation(
         summary = "Get item details",
@@ -140,9 +129,7 @@ public class ItemController {
         return ResponseEntity.ok(item);
     }
 
-    /**
-     * PUT /api/items/{id} - Update item details
-     */
+    
     @PutMapping("/{id}")
     @Operation(
         summary = "Update household item",
@@ -180,9 +167,7 @@ public class ItemController {
         return ResponseEntity.ok(updated);
     }
 
-    /**
-     * DELETE /api/items/{id} - Delete (retire) an item
-     */
+    
     @DeleteMapping("/{id}")
     @Operation(
         summary = "Delete household item",
@@ -211,9 +196,7 @@ public class ItemController {
         return ResponseEntity.noContent().build();
     }
 
-    /**
-     * GET /api/items/{id}/history - Get maintenance history for item
-     */
+    
     @GetMapping("/{id}/history")
     @Operation(
         summary = "Get item maintenance history",
@@ -246,9 +229,7 @@ public class ItemController {
         return ResponseEntity.ok(history);
     }
 
-    /**
-     * GET /api/items/due-maintenance - Get items needing maintenance
-     */
+    
     @GetMapping("/due-maintenance")
     @Operation(
         summary = "Get items needing maintenance",
@@ -276,9 +257,7 @@ public class ItemController {
         return ResponseEntity.ok(items);
     }
 
-    /**
-     * GET /api/items/statistics - Get user's item statistics
-     */
+    
     @GetMapping("/statistics")
     @Operation(
         summary = "Get item statistics",
@@ -306,10 +285,7 @@ public class ItemController {
         return ResponseEntity.ok(stats);
     }
 
-    /**
-     * Exception handler for IllegalArgumentException
-     * Returns 400 Bad Request for validation errors
-     */
+    
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException e) {
         log.error("Validation error: {}", e.getMessage());
@@ -321,10 +297,7 @@ public class ItemController {
         return ResponseEntity.badRequest().body(error);
     }
 
-    /**
-     * Exception handler for generic exceptions
-     * Returns 500 Internal Server Error
-     */
+    
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception e) {
         log.error("Internal error", e);
@@ -336,9 +309,7 @@ public class ItemController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 
-    /**
-     * Error response DTO for consistent error handling
-     */
+    
     @Schema(description = "Error response structure")
     public record ErrorResponse(
         @Schema(description = "HTTP status code", example = "400")

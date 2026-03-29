@@ -22,7 +22,7 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Stripe webhooks are verified by their own HMAC signature
+                        
                         .requestMatchers("/api/webhooks/stripe").permitAll()
                         .requestMatchers(
                                 "/actuator/**",
@@ -32,7 +32,7 @@ public class SecurityConfig {
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
-                // Spring Security fetches the RSA public key from jwk-set-uri automatically
+                
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable);

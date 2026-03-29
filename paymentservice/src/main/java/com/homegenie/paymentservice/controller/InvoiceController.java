@@ -31,9 +31,7 @@ public class InvoiceController {
 
     private final InvoiceService invoiceService;
 
-    /**
-     * Create a new invoice
-     */
+    
     @Operation(summary = "Create new invoice", description = "Generate invoice for maintenance request")
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "Invoice created successfully",
@@ -52,9 +50,7 @@ public class InvoiceController {
         }
     }
 
-    /**
-     * Get invoice by ID
-     */
+    
     @Operation(summary = "Get invoice by ID", description = "Retrieve invoice details by invoice ID")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Invoice found",
@@ -72,9 +68,7 @@ public class InvoiceController {
         }
     }
 
-    /**
-     * Get invoice by invoice number
-     */
+    
     @Operation(summary = "Get invoice by number", description = "Retrieve invoice by invoice number (e.g., INV-001)")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Invoice found",
@@ -92,9 +86,7 @@ public class InvoiceController {
         }
     }
 
-    /**
-     * Get invoices by user ID
-     */
+    
     @Operation(summary = "Get user invoices", description = "Retrieve all invoices for specific user")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Invoices retrieved",
@@ -106,9 +98,7 @@ public class InvoiceController {
         return ResponseEntity.ok(invoices);
     }
 
-    /**
-     * Get invoices by status
-     */
+    
     @Operation(summary = "Get invoices by status", description = "Filter invoices by status (DRAFT/SENT/VIEWED/PAID/CANCELLED)")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Invoices retrieved",
@@ -127,9 +117,7 @@ public class InvoiceController {
         }
     }
 
-    /**
-     * Send invoice to customer
-     */
+    
     @Operation(summary = "Send invoice", description = "Send invoice to customer via notification")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Invoice sent",
@@ -152,9 +140,7 @@ public class InvoiceController {
         }
     }
 
-    /**
-     * Mark invoice as viewed
-     */
+    
     @Operation(summary = "Mark invoice viewed", description = "Update invoice status to viewed")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Status updated",
@@ -172,9 +158,7 @@ public class InvoiceController {
         }
     }
 
-    /**
-     * Mark invoice as paid
-     */
+    
     @Operation(summary = "Mark invoice paid", description = "Update invoice status to paid with payment ID")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Invoice marked paid",
@@ -199,9 +183,7 @@ public class InvoiceController {
         }
     }
 
-    /**
-     * Cancel invoice
-     */
+    
     @Operation(summary = "Cancel invoice", description = "Cancel unpaid invoice")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Invoice cancelled",

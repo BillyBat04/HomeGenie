@@ -40,7 +40,7 @@ public class MarketplaceProviderController {
         return ResponseEntity.ok(providerService.getTopRatedProviders());
     }
 
-    /** Register a new external service provider. ADMIN only. */
+    
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProviderSummaryDTO> createProvider(@Valid @RequestBody CreateProviderRequest request) {
@@ -48,7 +48,7 @@ public class MarketplaceProviderController {
         return ResponseEntity.status(HttpStatus.CREATED).body(providerService.createProvider(request));
     }
 
-    /** Verify a provider so they can start accepting bookings. ADMIN only. */
+    
     @PatchMapping("/{id}/verify")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProviderSummaryDTO> verifyProvider(@PathVariable Long id) {

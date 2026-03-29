@@ -11,11 +11,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * Full response DTO for Item
- * Used for GET /api/items/{id} and POST/PUT responses
- * Contains all item details including calculated fields
- */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -40,7 +36,7 @@ public class ItemResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    // Calculated fields for frontend convenience
+    
     private Boolean isWarrantyValid;
     private Boolean isWarrantyExpiring;
     private Boolean needsMaintenance;
@@ -50,16 +46,12 @@ public class ItemResponse {
     private Integer daysUntilMaintenance;
     private Long totalMaintenanceCount;
 
-    /**
-     * Convert Item entity to ItemResponse DTO
-     */
+    
     public static ItemResponse fromEntity(Item item) {
         return fromEntity(item, null);
     }
 
-    /**
-     * Convert Item entity to ItemResponse DTO with maintenance count
-     */
+    
     public static ItemResponse fromEntity(Item item, Long maintenanceCount) {
         ItemResponse response = ItemResponse.builder()
                 .id(item.getId())
@@ -81,13 +73,13 @@ public class ItemResponse {
                 .updatedAt(item.getUpdatedAt())
                 .build();
 
-        // Calculate convenience fields
+        
         response.setIsWarrantyValid(item.isWarrantyValid());
         response.setIsWarrantyExpiring(item.isWarrantyExpiring());
         response.setNeedsMaintenance(item.needsMaintenance());
         response.setMaintenanceDueSoon(item.maintenanceDueSoon());
 
-        // Calculate days until warranty expiry (negative if expired)
+        
         if (item.getWarrantyExpiryDate() != null) {
             response.setDaysUntilWarrantyExpiry(
                 (int) java.time.temporal.ChronoUnit.DAYS.between(
@@ -97,7 +89,7 @@ public class ItemResponse {
             );
         }
 
-        // Calculate days until maintenance (negative if overdue)
+        
         if (item.getNextMaintenanceDate() != null) {
             int daysUntil = (int) java.time.temporal.ChronoUnit.DAYS.between(
                 LocalDate.now(), 
@@ -107,7 +99,7 @@ public class ItemResponse {
             response.setIsMaintenanceOverdue(daysUntil < 0);
         }
 
-        // Set maintenance count if provided
+        
         if (maintenanceCount != null) {
             response.setTotalMaintenanceCount(maintenanceCount);
         }

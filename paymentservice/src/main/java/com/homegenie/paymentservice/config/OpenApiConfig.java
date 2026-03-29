@@ -6,10 +6,7 @@ import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import org.springframework.context.annotation.Configuration;
 
-/**
- * OpenAPI Configuration for Payment Service
- * Following Lean Swagger principles - API contract only, no business logic docs
- */
+
 @Configuration
 @OpenAPIDefinition(
     info = @Info(

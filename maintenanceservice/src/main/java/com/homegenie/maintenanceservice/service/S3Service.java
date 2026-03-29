@@ -162,7 +162,7 @@ public class S3Service {
 
                         log.info("Synced {} to S3: {}", file.getName(), s3Url);
 
-                        // Optionally delete local file after successful sync
+                        
                         file.delete();
 
                         synced++;
@@ -178,18 +178,16 @@ public class S3Service {
         }
     }
 
-    /**
-     * Delete image from both S3 and local storage
-     */
+    
     public void deleteImage(String imageUrl) {
         try {
             if (imageUrl.contains("s3.amazonaws.com")) {
-                // Delete from S3
+                
                 String fileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
                 getS3Client().deleteObject(bucketName, "maintenance/" + fileName);
                 log.info("Image deleted from S3: {}", fileName);
             } else if (imageUrl.contains(localStorageBaseUrl)) {
-                // Delete from local storage
+                
                 String fileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
                 Path filePath = Paths.get(localStoragePath, fileName);
                 Files.deleteIfExists(filePath);
@@ -200,9 +198,7 @@ public class S3Service {
         }
     }
 
-    /**
-     * Result class for upload operations
-     */
+    
     public static class ImageUploadResult {
         private final String url;
         private final String storageType;

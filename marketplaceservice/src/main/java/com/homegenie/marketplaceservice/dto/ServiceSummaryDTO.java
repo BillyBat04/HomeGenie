@@ -10,9 +10,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
-/**
- * Service summary DTO for list view
- */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

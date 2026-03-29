@@ -8,11 +8,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.util.Map;
 
-/**
- * Payment Platform API Request DTO
- * 
- * Maps to Payment Service MiniAppPaymentRequest
- */
+
 @Data
 @Builder
 @NoArgsConstructor

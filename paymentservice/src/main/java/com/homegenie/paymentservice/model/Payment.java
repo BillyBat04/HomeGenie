@@ -42,22 +42,22 @@ public class Payment {
     private Long userId;
 
     @Column(nullable = false)
-    private Long orderId; // Generic order ID (maintenance request ID, booking ID, etc.)
+    private Long orderId; 
 
     @Column(nullable = false, length = 50)
     @Builder.Default
-    private String miniAppId = "maintenance"; // Mini-app identifier
+    private String miniAppId = "maintenance"; 
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
 
     @Column(precision = 10, scale = 2)
     @Builder.Default
-    private BigDecimal commission = BigDecimal.ZERO; // Platform commission
+    private BigDecimal commission = BigDecimal.ZERO; 
 
     @Column(precision = 5, scale = 4)
     @Builder.Default
-    private BigDecimal commissionRate = BigDecimal.ZERO; // Commission rate (0.0 - 1.0)
+    private BigDecimal commissionRate = BigDecimal.ZERO; 
 
     @Column(nullable = false, length = 3)
     @Builder.Default
@@ -89,7 +89,7 @@ public class Payment {
     private String failureReason;
 
     @Column(name = "metadata_json", columnDefinition = "jsonb")
-    private String metadataJson; // Mini-app specific metadata
+    private String metadataJson; 
 
     @Column(nullable = false)
     @Builder.Default

@@ -116,7 +116,7 @@ class MarketplaceBookingServiceTest {
         when(serviceRepository.findById(1L)).thenReturn(Optional.of(testService));
         when(providerRepository.findById(1L)).thenReturn(Optional.of(testProvider));
         when(bookingRepository.save(any(MarketplaceBooking.class))).thenReturn(testBooking);
-        // createBooking now increments totalBookings and saves provider
+        
         when(providerRepository.save(any(MarketplaceProvider.class))).thenReturn(testProvider);        
         
         BookingResponseDTO result = bookingService.createBooking(request);        
@@ -207,7 +207,7 @@ class MarketplaceBookingServiceTest {
         Long bookingId = 1L;
         Long paymentId = 888L;
 
-        // Mock payment verification: return a SUCCESS payment whose orderId matches bookingId
+        
         PaymentVerificationDTO paymentDTO = new PaymentVerificationDTO();
         paymentDTO.setId(paymentId);
         paymentDTO.setOrderId(bookingId);
@@ -300,10 +300,10 @@ class MarketplaceBookingServiceTest {
         assertEquals(BookingStatus.COMPLETED, result.getStatus());
         assertEquals(BigDecimal.valueOf(150.00), result.getFinalPrice());        
         
-        // totalBookings is now incremented in createBooking, so completeBooking only increments completedBookings.
+        
         verify(providerRepository).save(argThat(provider ->
             provider.getCompletedBookings() == 1 &&
-            provider.getTotalBookings() == 0   // not changed by completeBooking
+            provider.getTotalBookings() == 0   
         ));        
         
         verify(kafkaTemplate).send(eq("marketplace.booking.events"), any(BookingEvent.class));

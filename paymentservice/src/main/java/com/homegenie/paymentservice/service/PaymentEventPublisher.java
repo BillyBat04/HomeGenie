@@ -12,13 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-/**
- * Publishes payment lifecycle events to Kafka so notification-service
- * can send confirmation/failure emails to the user.
- *
- * Topic: payment-events (consumed by notification-service group)
- * Also watched by KEDA to auto-scale notification-service pods.
- */
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -29,11 +23,7 @@ public class PaymentEventPublisher {
     @Value("${kafka.topics.payment-events:payment-events}")
     private String paymentEventsTopic;
 
-    /**
-     * Called after a payment is successfully created and saved.
-     * partitionKey = userId → events for the same user land on the same partition,
-     * preserving order (e.g. PAYMENT_CONFIRMED always after PAYMENT_FAILED for a user).
-     */
+    
     public void publishPaymentConfirmed(Payment payment) {
         publish("PAYMENT_CONFIRMED", payment, null);
     }
@@ -67,8 +57,8 @@ public class PaymentEventPublisher {
             kafkaTemplate.send(topic, key, event);
             log.info(" {} published successfully", eventType);
         } catch (Exception e) {
-            // Log but do not throw — a Kafka failure must NOT roll back an already-committed Stripe payment.
-            // The notification is best-effort; the payment itself was successful.
+            
+            
             log.error(" Failed to publish {}: {}. Payment {} was already committed — no rollback.", 
                     eventType, e.getMessage(), payment.getId());
         }

@@ -10,11 +10,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
-/**
- * Summary DTO for Item
- * Used for GET /api/items (list view)
- * Contains only essential fields for list display
- */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -31,15 +27,13 @@ public class ItemSummaryDTO {
     private LocalDate warrantyExpiryDate;
     private String location;
 
-    // Quick status indicators
+    
     private Boolean needsMaintenance;
     private Boolean maintenanceDueSoon;
     private Boolean isWarrantyExpiring;
     private Boolean isWarrantyValid;
 
-    /**
-     * Convert Item entity to ItemSummaryDTO
-     */
+    
     public static ItemSummaryDTO fromEntity(Item item) {
         return ItemSummaryDTO.builder()
                 .id(item.getId())

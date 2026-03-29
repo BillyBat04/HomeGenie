@@ -6,14 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
-/**
- * User Entity
- * ✅ IDENTICAL to User Service User entity
- * Shared database table: users
- * 
- * IMPORTANT: Do NOT modify this entity structure!
- * Any changes must be synchronized with User Service
- */
+
 @Entity
 @Table(name = "users", indexes = {
     @Index(name = "idx_user_email", columnList = "email"),
@@ -43,7 +36,7 @@ public class User {
 
     private String flatNumber;
 
-    // For technicians - their area of expertise
+    
     private String specialty;
 
     @Enumerated(EnumType.STRING)
@@ -53,6 +46,6 @@ public class User {
 
     private boolean active = true;
 
-    // Email notification preferences
+    
     private boolean emailNotificationsEnabled = true;
 }

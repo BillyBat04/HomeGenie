@@ -22,10 +22,10 @@ public class MaintenanceScheduler {
 
     private final MaintenanceRepository repository;
     private final EmailNotificationService emailService;
-    private final MaintenanceService maintenanceService; // to fetch user details
+    private final MaintenanceService maintenanceService; 
 
-    // Format: second, minute, hour, day of month, month, day of week
-    @Scheduled(cron = "0 0 */6 * * *") // every 6 hours
+    
+    @Scheduled(cron = "0 0 */6 * * *") 
     public void checkPendingRequests() {
         log.info("🔍 Running scheduled check for pending maintenance requests...");
 

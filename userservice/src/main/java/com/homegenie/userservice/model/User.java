@@ -24,7 +24,7 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
-    // Credentials managed by identity-service — nullable post-migration V2
+    
     @Column(nullable = true)
     private String password;
 
@@ -36,7 +36,7 @@ public class User {
 
     private String flatNumber;
 
-    // For technicians - their area of expertise
+    
     private String specialty;
 
     @Enumerated(EnumType.STRING)
@@ -46,6 +46,6 @@ public class User {
 
     private boolean active = true;
 
-    // Email notification preferences
+    
     private boolean emailNotificationsEnabled = true;
 }

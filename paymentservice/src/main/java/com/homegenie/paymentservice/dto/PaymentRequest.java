@@ -35,12 +35,12 @@ public class PaymentRequest {
     @Schema(description = "Payment description", example = "Payment for plumbing repair")
     private String description;
     
-    // Stripe specific fields
+    
     @Schema(description = "Stripe payment method ID", example = "pm_1234567890")
-    private String paymentMethodId; // Stripe payment method ID
+    private String paymentMethodId; 
     
     @Schema(description = "Stripe customer ID", example = "cus_1234567890")
-    private String customerId; // Existing Stripe customer ID
+    private String customerId; 
     
     @Schema(description = "Auto-capture payment", example = "true")
     private Boolean autoCapture = true;

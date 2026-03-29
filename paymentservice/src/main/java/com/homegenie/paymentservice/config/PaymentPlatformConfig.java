@@ -8,10 +8,7 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Payment Platform Configuration
- * Manages commission rates and settings for all mini-apps
- */
+
 @Configuration
 @ConfigurationProperties(prefix = "payment-platform")
 @Data
@@ -27,9 +24,7 @@ public class PaymentPlatformConfig {
         private String description;
     }
 
-    /**
-     * Get commission rate for a specific mini-app
-     */
+    
     public BigDecimal getCommissionRate(String miniAppId) {
         MiniAppConfig config = miniApps.get(miniAppId);
         if (config == null || !config.isEnabled()) {
@@ -38,17 +33,13 @@ public class PaymentPlatformConfig {
         return config.getCommissionRate();
     }
 
-    /**
-     * Check if mini-app is enabled
-     */
+    
     public boolean isEnabled(String miniAppId) {
         MiniAppConfig config = miniApps.get(miniAppId);
         return config != null && config.isEnabled();
     }
 
-    /**
-     * Validate mini-app exists and is enabled
-     */
+    
     public void validateMiniApp(String miniAppId) {
         if (!isEnabled(miniAppId)) {
             throw new IllegalArgumentException("Mini-app not found or disabled: " + miniAppId);

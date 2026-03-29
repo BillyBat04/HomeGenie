@@ -9,10 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-/**
- * Custom business metrics for Payment Service
- * Tracks payments, wallets, invoices, and transactions
- */
+
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -20,27 +17,27 @@ public class MetricsService {
 
     private final MeterRegistry registry;
 
-    // Payment metrics
+    
     private Counter paymentCreatedCounter;
     private Counter paymentSuccessCounter;
     private Counter paymentFailedCounter;
     private Timer paymentProcessingTimer;
     private DistributionSummary paymentAmountSummary;
 
-    // Wallet metrics
+    
     private Counter walletCreatedCounter;
     private Counter walletTopUpCounter;
     private Counter walletDebitCounter;
     private Counter walletTransferCounter;
     private DistributionSummary walletBalanceSummary;
 
-    // Invoice metrics
+    
     private Counter invoiceCreatedCounter;
     private Counter invoicePaidCounter;
     private Counter invoiceOverdueCounter;
     private DistributionSummary invoiceAmountSummary;
 
-    // Stripe integration metrics
+    
     private Counter stripeApiCallCounter;
     private Counter stripeApiErrorCounter;
     private Timer stripeApiTimer;
@@ -49,7 +46,7 @@ public class MetricsService {
     public void init() {
         log.info("Initializing Payment Service custom metrics...");
 
-        // Payment metrics
+        
         paymentCreatedCounter = Counter.builder("payment_created_total")
                 .description("Total number of payments created")
                 .tag("service", "payment-service")
@@ -83,7 +80,7 @@ public class MetricsService {
                 .baseUnit("cents")
                 .register(registry);
 
-        // Wallet metrics
+        
         walletCreatedCounter = Counter.builder("wallet_created_total")
                 .description("Total number of wallets created")
                 .tag("service", "payment-service")
@@ -115,7 +112,7 @@ public class MetricsService {
                 .baseUnit("cents")
                 .register(registry);
 
-        // Invoice metrics
+        
         invoiceCreatedCounter = Counter.builder("invoice_created_total")
                 .description("Total number of invoices created")
                 .tag("service", "payment-service")
@@ -143,7 +140,7 @@ public class MetricsService {
                 .baseUnit("cents")
                 .register(registry);
 
-        // Stripe metrics
+        
         stripeApiCallCounter = Counter.builder("stripe_api_calls_total")
                 .description("Total number of Stripe API calls")
                 .tag("service", "payment-service")
@@ -165,7 +162,7 @@ public class MetricsService {
         log.info("✅ Payment Service custom metrics initialized successfully");
     }
 
-    // === Payment metrics ===
+    
     public void recordPaymentCreated() {
         paymentCreatedCounter.increment();
     }
@@ -183,7 +180,7 @@ public class MetricsService {
         paymentProcessingTimer.record(operation);
     }
 
-    // === Wallet metrics ===
+    
     public void recordWalletCreated() {
         walletCreatedCounter.increment();
     }
@@ -201,7 +198,7 @@ public class MetricsService {
         walletTransferCounter.increment();
     }
 
-    // === Invoice metrics ===
+    
     public void recordInvoiceCreated(long amountInCents) {
         invoiceCreatedCounter.increment();
         invoiceAmountSummary.record(amountInCents);
@@ -215,7 +212,7 @@ public class MetricsService {
         invoiceOverdueCounter.increment();
     }
 
-    // === Stripe metrics ===
+    
     public void recordStripeApiCall() {
         stripeApiCallCounter.increment();
     }

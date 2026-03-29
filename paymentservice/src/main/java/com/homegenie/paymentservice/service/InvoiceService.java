@@ -37,17 +37,15 @@ public class InvoiceService {
 
     private static final AtomicLong invoiceCounter = new AtomicLong(1000);
 
-    /**
-     * Create a new invoice
-     */
+    
     @Transactional
     public InvoiceResponse createInvoice(InvoiceRequest request) {
         log.info("Creating invoice for user {} and request {}", request.getUserId(), request.getRequestId());
 
-        // Generate unique invoice number
+        
         String invoiceNumber = generateInvoiceNumber();
 
-        // Calculate total amount
+        
         BigDecimal subtotal = request.getSubtotal();
         BigDecimal tax = request.getTax() != null ? request.getTax() : BigDecimal.ZERO;
         BigDecimal lateFee = request.getLateFee() != null ? request.getLateFee() : BigDecimal.ZERO;
@@ -74,27 +72,21 @@ public class InvoiceService {
         return InvoiceResponse.fromEntity(invoice);
     }
 
-    /**
-     * Get invoice by ID
-     */
+    
     public InvoiceResponse getInvoiceById(Long invoiceId) {
         Invoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new RuntimeException("Invoice not found: " + invoiceId));
         return InvoiceResponse.fromEntity(invoice);
     }
 
-    /**
-     * Get invoice by invoice number
-     */
+    
     public InvoiceResponse getInvoiceByNumber(String invoiceNumber) {
         Invoice invoice = invoiceRepository.findByInvoiceNumber(invoiceNumber)
                 .orElseThrow(() -> new RuntimeException("Invoice not found: " + invoiceNumber));
         return InvoiceResponse.fromEntity(invoice);
     }
 
-    /**
-     * Get invoices by user ID
-     */
+    
     public List<InvoiceResponse> getInvoicesByUserId(Long userId) {
         List<Invoice> invoices = invoiceRepository.findByUserId(userId);
         return invoices.stream()
@@ -102,9 +94,7 @@ public class InvoiceService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Get invoices by status
-     */
+    
     public List<InvoiceResponse> getInvoicesByStatus(Invoice.InvoiceStatus status) {
         List<Invoice> invoices = invoiceRepository.findByStatus(status);
         return invoices.stream()
@@ -112,9 +102,7 @@ public class InvoiceService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Mark invoice as sent
-     */
+    
     @Transactional
     public InvoiceResponse sendInvoice(Long invoiceId) {
         Invoice invoice = invoiceRepository.findById(invoiceId)
@@ -131,9 +119,7 @@ public class InvoiceService {
         return InvoiceResponse.fromEntity(invoice);
     }
 
-    /**
-     * Mark invoice as viewed by customer
-     */
+    
     @Transactional
     public InvoiceResponse markInvoiceAsViewed(Long invoiceId) {
         Invoice invoice = invoiceRepository.findById(invoiceId)
@@ -148,9 +134,7 @@ public class InvoiceService {
         return InvoiceResponse.fromEntity(invoice);
     }
 
-    /**
-     * Mark invoice as paid and link payment
-     */
+    
     @Transactional
     public InvoiceResponse markInvoiceAsPaid(Long invoiceId, Long paymentId) {
         Invoice invoice = invoiceRepository.findById(invoiceId)
@@ -172,9 +156,7 @@ public class InvoiceService {
         return InvoiceResponse.fromEntity(invoice);
     }
 
-    /**
-     * Cancel an invoice
-     */
+    
     @Transactional
     public InvoiceResponse cancelInvoice(Long invoiceId) {
         Invoice invoice = invoiceRepository.findById(invoiceId)
@@ -191,10 +173,7 @@ public class InvoiceService {
         return InvoiceResponse.fromEntity(invoice);
     }
 
-    /**
-     * Process overdue invoices and apply late fees
-     * Runs every day at midnight
-     */
+    
     @Scheduled(cron = "0 0 0 * * ?")
     @Transactional
     public void processOverdueInvoices() {
@@ -205,7 +184,7 @@ public class InvoiceService {
                 now, Invoice.InvoiceStatus.SENT);
 
         for (Invoice invoice : overdueInvoices) {
-            // Calculate late fee if not already applied
+            
             if (invoice.getLateFee().compareTo(BigDecimal.ZERO) == 0) {
                 BigDecimal lateFee = invoice.getSubtotal()
                         .multiply(lateFeePercentage)
@@ -225,9 +204,7 @@ public class InvoiceService {
         log.info("Processed {} overdue invoices", overdueInvoices.size());
     }
 
-    /**
-     * Generate unique invoice number
-     */
+    
     private String generateInvoiceNumber() {
         long counter = invoiceCounter.getAndIncrement();
         return String.format("%s-%06d", invoicePrefix, counter);
