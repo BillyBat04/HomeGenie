@@ -71,7 +71,7 @@ HomeGenie follows a **microservices architecture** with 7 core services:
   ┌────▼┐ ┌──▼──┐┌─▼───┐┌▼────┐┌▼───────┐┌─▼─────────┐
   │User │ │Maint││Pay- ││Noti-││Identity││Marketplace│
   │8081 │ │8082 ││ment ││fic. ││Platform││  Service  │
-  │     │ │     ││8083 ││8084 ││  8086  ││           │
+  │     │ │     ││8083 ││8084 ││  8086  ││   8085    │
   └──┬──┘ └──┬──┘└──┬──┘└──┬──┘└───┬────┘└─────┬─────┘
      │       │      │      │       │            │
      └───────┴──────┴──────┴───────┴────────────┘
@@ -84,13 +84,13 @@ HomeGenie follows a **microservices architecture** with 7 core services:
 
 **Service Responsibilities**:
 
-- **Gateway Service** (:8080): Entry point, authentication, rate limiting, shadow mode testing
-- **User Service** (:8081): User management, JWT generation, authentication
-- **Maintenance Service** (:8082): Request CRUD, AI classification, S3 uploads, warranty checks
+- **Gateway Service** (:8080): Entry point, RS256 JWT validation (JWKS), rate limiting, circuit breakers, shadow mode A/B testing, auto-rollback
+- **User Service** (:8081): User management, profile & role management, Kafka event publishing
+- **Maintenance Service** (:8082): Request CRUD, AI classification (Gemini), S3 uploads, warranty checks, Python voice service integration
 - **Payment Service** (:8083): Stripe integration, invoice generation, webhooks, saga pattern
-- **Notification Service** (:8084): Multi-channel delivery (Email/SMS), Kafka consumers, retry logic
-- **Identity Platform** (:8086): Platform-level authentication, JWT management, security
-- **Marketplace Service**: Mini-app ecosystem, payment routing, commission handling
+- **Notification Service** (:8084): Multi-channel delivery (Email/SMS), Kafka consumers, Thymeleaf email templates, retry logic
+- **Identity Platform** (:8086): RS256 JWT issuance, JWKS public key endpoint (`/.well-known/jwks.json`), user registration/login
+- **Marketplace Service** (:8085): Service catalog, provider booking, payment routing, commission handling, Kafka event publishing
 
 📖 **Detailed Architecture**: [docs/SYSTEM-ARCHITECTURE.md](docs/SYSTEM-ARCHITECTURE.md)
 
@@ -186,8 +186,10 @@ Start-Process "http://localhost:3000"  # Login: admin/admin
 | **Spring Data JPA** | - | ORM for PostgreSQL |
 | **Flyway** | - | Database migrations |
 | **Kafka** | 7.5.0 | Event streaming (Confluent Platform) |
-| **JWT (JJWT)** | 0.11.5 | Authentication & authorization |
+| **Spring OAuth2 Resource Server** | - | RS256 JWT validation via JWKS across all services |
+| **Nimbus JOSE+JWT** | - | RS256 JWT signing in identity-service |
 | **BCrypt** | - | Password hashing |
+| **Micrometer Tracing + Zipkin** | - | Distributed tracing (gateway, identity, marketplace) |
 
 ### Frontend
 
@@ -197,7 +199,7 @@ Start-Process "http://localhost:3000"  # Login: admin/admin
 | **Vite** | 7.1.7 | Build tool |
 | **TailwindCSS** | 3.4.18 | Styling |
 | **Lucide React** | 0.548.0 | Icons |
-| **Axios** | - | HTTP client |
+| **React Toastify** | 11.0.5 | Toast notifications |
 
 ### Databases & Caching
 
@@ -246,10 +248,11 @@ Start-Process "http://localhost:3000"  # Login: admin/admin
 
 ### 🔐 Authentication & Authorization
 
-- JWT-based authentication with refresh token rotation
+- RS256 JWT authentication with refresh token rotation (identity-service as single signing authority)
+- All services validate JWT via shared JWKS endpoint — no shared secrets
 - Role-based access control (ADMIN, TECHNICIAN, RESIDENT)
 - BCrypt password hashing (cost factor: 10)
-- Token expiration: Access (24h), Refresh (7d)
+- Token expiration: Access (15 min), Refresh (7 days)
 
 ### 🏠 Maintenance Management
 
@@ -257,8 +260,8 @@ Start-Process "http://localhost:3000"  # Login: admin/admin
 - **Status Workflow**: PENDING → IN_PROGRESS → COMPLETED (with state validation)
 - **Media Uploads**: Image/video upload to AWS S3 (10MB limit)
 - **Technician Assignment**: Auto-assign based on specialty with status transition
-- **Scheduled Maintenance**: Cron jobs for reminders (8:00 AM) and warranty checks (8:15 AM)
-- **Voice Assistant**: Speech-to-text voice commands for creating maintenance requests using Google Speech Recognition
+- **Scheduled Maintenance**: Cron jobs for pending-request checks (every 6h), maintenance reminders (8:00 AM daily), and warranty checks (8:15 AM daily)
+- **Voice Assistant**: Python FastAPI sidecar service (port 8000) using Google Speech Recognition + Gemini AI for natural-language maintenance request creation
 
 ### 💳 Payment Processing
 
@@ -270,9 +273,9 @@ Start-Process "http://localhost:3000"  # Login: admin/admin
 
 ### 🔔 Notifications
 
-- **Multi-Channel Delivery**: Email (SMTP) and SMS (AWS SNS)
-- **Event-Driven**: Kafka consumers for 4 topics (user, maintenance, payment, invoice events)
-- **Retry Logic**: 3 attempts with exponential backoff (5m, 15m, 45m)
+- **Multi-Channel Delivery**: Email (SMTP/AWS SES with Thymeleaf templates) and SMS (AWS SNS)
+- **Event-Driven**: Kafka consumers for 5 topics (user-events, payment-events, invoice-events, maintenance-reminder, warranty-reminder)
+- **Retry Logic**: 3 attempts with 5-minute polling cycle for failed notifications
 - **User Preferences**: Configurable email notification opt-in/opt-out
 
 ### 📊 Monitoring & Observability
@@ -286,9 +289,9 @@ Start-Process "http://localhost:3000"  # Login: admin/admin
 
 - **Virtual Threads**: Java 21 Virtual Threads for 10x throughput improvement
 - **Rate Limiting**: Token bucket algorithm (10 req/s, burst 20) via Redis
-- **Connection Pooling**: HikariCP with optimized settings (max 10, min-idle 5)
+- **Connection Pooling**: HikariCP with optimized settings (max 20, min-idle 5)
 - **Caching**: Redis for rate limiting and AI classification results
-- **Shadow Mode Testing**: API Gateway supports canary deployments and A/B testing with auto-rollback
+- **Shadow Mode Testing**: API Gateway supports canary deployments and A/B testing with configurable traffic-split percentage and automatic error-rate-based rollback (threshold: 1% error rate or p95 > 200ms)
 
 📖 **Feature Details**: [docs/BUSINESS-PROCESSES.md](docs/BUSINESS-PROCESSES.md)
 
