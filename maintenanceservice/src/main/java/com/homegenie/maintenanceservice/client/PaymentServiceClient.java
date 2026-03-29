@@ -12,9 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-/**
- * Client for calling Payment Service Platform v2 API
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -26,9 +23,7 @@ public class PaymentServiceClient {
     @Value("${payment.service.url:http://localhost:8083}")
     private String paymentServiceUrl;
 
-    /**
-     * Create payment via Payment Platform v2 mini-app endpoint
-     */
+    
     public PaymentResponse createPayment(MiniAppPaymentRequest request) {
         String url = paymentServiceUrl + "/api/payments/mini-app";
         

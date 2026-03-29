@@ -8,10 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-/**
- * Simplified maintenance history DTO
- * Used in ItemResponse to show maintenance history for an item
- */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -27,9 +24,6 @@ public class MaintenanceHistoryDTO {
     private Long technicianId;
     private String technicianName;
 
-    /**
-     * Convert MaintenanceRequest to MaintenanceHistoryDTO
-     */
     public static MaintenanceHistoryDTO fromEntity(MaintenanceRequest request) {
         return MaintenanceHistoryDTO.builder()
                 .requestId(request.getId())
