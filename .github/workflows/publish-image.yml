@@ -1,19 +1,4 @@
-# ===================================================================
-# Reusable Workflow: Build, Scan, Sign and Push Container Image
-# ===================================================================
-# This workflow uses Jib to build container images, generates SBOM,
-# scans for vulnerabilities, signs images with cosign, and pushes
-# to GitHub Container Registry (GHCR).
-#
-# Usage:
-#   jobs:
-#     publish:
-#       uses: ./.github/workflows/publish-image.yml
-#       with:
-#         service: userservice
-#         tag: 1.0.0
-#       secrets: inherit
-# ===================================================================
+
 
 name: Publish Image (Reusable)
 
@@ -45,23 +30,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: 📥 Download JAR artifact
+      - name: Download JAR artifact
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.service }}-jar
           path: ./${{ inputs.service }}/target
 
-      - name: ☕ Setup Java 21
+      - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
           distribution: "temurin"
           java-version: "21"
           cache: "maven"
 
-      - name: 🔐 Login to GitHub Container Registry
+      - name: Login to GitHub Container Registry
         if: ${{ inputs.push }}
         uses: docker/login-action@v3
         with:
@@ -69,13 +54,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 📝 Extract metadata
+      - name: Extract metadata
         id: meta
         run: |
           echo "image=ghcr.io/${{ github.repository_owner }}/${{ inputs.service }}" >> $GITHUB_OUTPUT
           echo "full_tag=ghcr.io/${{ github.repository_owner }}/${{ inputs.service }}:${{ inputs.tag }}" >> $GITHUB_OUTPUT
 
-      - name: 🐳 Build and push with Jib
+      - name: Build and push with Jib
         working-directory: ./${{ inputs.service }}
         env:
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
@@ -90,60 +75,56 @@ jobs:
               -Djib.to.image=${{ steps.meta.outputs.full_tag }}
           fi
 
-      - name: 📋 Generate SBOM with Syft
+      - name: Generate SBOM with Syft
         uses: anchore/sbom-action@v0
         with:
           image: ${{ steps.meta.outputs.full_tag }}
           format: spdx-json
           output-file: sbom-${{ inputs.service }}.spdx.json
 
-      - name: 📤 Upload SBOM artifact
+      - name: Upload SBOM artifact
         uses: actions/upload-artifact@v4
         with:
           name: sbom-${{ inputs.service }}
           path: sbom-${{ inputs.service }}.spdx.json
           retention-days: 90
 
-      - name: 🔍 Vulnerability scan with Trivy
-        uses: aquasecurity/trivy-action@master
+      - name: Vulnerability scan with Trivy
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: ${{ steps.meta.outputs.full_tag }}
           format: "sarif"
           output: "trivy-results-${{ inputs.service }}.sarif"
           severity: "CRITICAL,HIGH"
 
-      - name: 📤 Upload Trivy results to GitHub Security
+      - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: "trivy-results-${{ inputs.service }}.sarif"
           category: "trivy-${{ inputs.service }}"
 
-      - name: 🛡️ Install Cosign
+      - name: Install Cosign
         if: ${{ inputs.push }}
         uses: sigstore/cosign-installer@v3
 
-      - name: ✍️ Sign image with Cosign (keyless)
+      - name: Sign image with Cosign (keyless)
         if: ${{ inputs.push }}
-        env:
-          COSIGN_EXPERIMENTAL: 1
         run: |
           cosign sign --yes ${{ steps.meta.outputs.full_tag }}
 
-      - name: ✅ Verify image signature
+      - name: Verify image signature
         if: ${{ inputs.push }}
-        env:
-          COSIGN_EXPERIMENTAL: 1
         run: |
           cosign verify ${{ steps.meta.outputs.full_tag }} \
             --certificate-identity-regexp="https://github.com/${{ github.repository_owner }}.*" \
             --certificate-oidc-issuer=https://token.actions.githubusercontent.com
 
-      - name: 📊 Image summary
+      - name: Image summary
         run: |
-          echo "### 🐳 Container Image Published" >> $GITHUB_STEP_SUMMARY
+          echo "### Container Image Published" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Service:** \`${{ inputs.service }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Image:** \`${{ steps.meta.outputs.full_tag }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Signed:** ✅ Cosign keyless signature" >> $GITHUB_STEP_SUMMARY
-          echo "**SBOM:** ✅ SPDX format" >> $GITHUB_STEP_SUMMARY
-          echo "**Scan:** ✅ Trivy vulnerability scan" >> $GITHUB_STEP_SUMMARY
+          echo "**Signed:**  Cosign keyless signature" >> $GITHUB_STEP_SUMMARY
+          echo "**SBOM:**  SPDX format" >> $GITHUB_STEP_SUMMARY
+          echo "**Scan:**  Trivy vulnerability scan" >> $GITHUB_STEP_SUMMARY

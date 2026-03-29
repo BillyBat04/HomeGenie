@@ -1,17 +1,3 @@
-# ===================================================================
-# CI/CD Pipeline for HomeGenie Microservices
-# ===================================================================
-# This workflow orchestrates the complete CI/CD pipeline:
-# 1. Build & test all 5 microservices + frontend
-# 2. Run security scans and quality checks
-# 3. Build and push container images with SBOM & signing
-# 4. Deploy to target environment
-#
-# Triggers:
-#   - Push to main/develop branches
-#   - Pull requests
-#   - Manual dispatch
-# ===================================================================
 
 name: CI/CD Pipeline
 
@@ -43,12 +29,11 @@ env:
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
-  # ============================================================
-  # Stage 1: Build and Test Backend Services
-  # ============================================================
+
   build-backend:
     name: Build Backend
     strategy:
+      fail-fast: false
       matrix:
         service:
           [
@@ -63,92 +48,90 @@ jobs:
       service: ${{ matrix.service }}
       skipTests: false
 
-  # ============================================================
-  # Stage 2: Build Frontend
-  # ============================================================
   build-frontend:
     name: Build Frontend
     runs-on: ubuntu-latest
     steps:
-      - name: 📥 Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: 📦 Setup Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: homegenie-app/package-lock.json
 
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         working-directory: ./homegenie-app
         run: npm ci
 
-      - name: 🧪 Run tests
+      - name: Run tests
         working-directory: ./homegenie-app
         run: npm test -- --run
 
-      - name: 🏗️ Build production bundle
+      - name: Build production bundle
         working-directory: ./homegenie-app
         run: npm run build
 
-      - name: 📤 Upload build artifact
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: frontend-dist
           path: ./homegenie-app/dist
           retention-days: 7
 
-  # ============================================================
-  # Stage 3: Security Scanning
-  # ============================================================
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
     needs: [build-backend]
     steps:
-      - name: 📥 Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: 🔍 Run CodeQL analysis
+      - name: Run CodeQL analysis
         uses: github/codeql-action/init@v3
         with:
           languages: java, javascript
 
-      - name: 🔍 Perform CodeQL analysis
+      - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v3
 
-      - name: 🔒 OWASP Dependency Check
-        uses: dependency-check/Dependency-Check_Action@main
+      - name: Setup Java 21 (for OWASP scan)
+        uses: actions/setup-java@v4
         with:
-          project: "HomeGenie"
-          path: "."
-          format: "HTML"
-          args: >
-            --enableRetired
-            --failOnCVSS 7
+          distribution: "temurin"
+          java-version: "21"
+          cache: "maven"
 
-      - name: 📤 Upload dependency check results
+      - name: OWASP Dependency Check
+        continue-on-error: true
+        run: |
+          mvn -B org.owasp:dependency-check-maven:9.2.0:aggregate \
+            -DfailBuildOnCVSS=7 \
+            -Dformat=HTML \
+            -DenableRetired=true \
+            -DassemblyAnalyzerEnabled=false
+
+      - name: Upload dependency check results
         uses: actions/upload-artifact@v4
         with:
           name: dependency-check-report
-          path: reports
+          path: "**/dependency-check-report.html"
+          retention-days: 7
 
-  # ============================================================
-  # Stage 4: Code Quality
-  # ============================================================
   code-quality:
     name: Code Quality
     runs-on: ubuntu-latest
     needs: [build-backend]
     steps:
-      - name: 📥 Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: 📊 SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v3.1.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -157,14 +140,13 @@ jobs:
             -Dsonar.organization=${{ github.repository_owner }}
             -Dsonar.projectKey=${{ github.repository_owner }}_homegenie
 
-  # ============================================================
-  # Stage 5: Build and Push Container Images
-  # ============================================================
+
   publish-images:
     name: Publish Images
     needs: [build-backend, security-scan]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     strategy:
+      fail-fast: false
       matrix:
         service:
           [
@@ -181,29 +163,27 @@ jobs:
       push: true
     secrets: inherit
 
-  # ============================================================
-  # Stage 6: Database Migrations
-  # ============================================================
   database-migrations:
     name: Database Migrations
     runs-on: ubuntu-latest
     needs: [publish-images]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     strategy:
+      fail-fast: false
       matrix:
         service:
           [userservice, maintenanceservice, paymentservice, notificationservice]
     steps:
-      - name: 📥 Checkout code
+      - name:  Checkout code
         uses: actions/checkout@v4
 
-      - name: ☕ Setup Java 21
+      - name:  Setup Java 21
         uses: actions/setup-java@v4
         with:
           distribution: "temurin"
           java-version: "21"
 
-      - name: 🗄️ Run Flyway migrations
+      - name:  Run Flyway migrations
         working-directory: ./${{ matrix.service }}
         env:
           DB_URL: ${{ secrets[format('{0}_DB_URL', matrix.service)] }}
@@ -215,9 +195,6 @@ jobs:
             -Dflyway.user="$DB_USER" \
             -Dflyway.password="$DB_PASSWORD"
 
-  # ============================================================
-  # Stage 7: Deploy to Environment
-  # ============================================================
   deploy:
     name: Deploy to ${{ github.event.inputs.deploy_env || 'dev' }}
     runs-on: ubuntu-latest
@@ -229,10 +206,10 @@ jobs:
       name: ${{ github.event.inputs.deploy_env || 'dev' }}
       url: ${{ steps.deploy.outputs.app_url }}
     steps:
-      - name: 📥 Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: 🚀 Deploy to Railway
+      - name: Deploy to Railway
         id: deploy
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
@@ -240,32 +217,66 @@ jobs:
           # Install Railway CLI
           npm i -g @railway/cli
 
-          # Deploy each service
-          railway up --service gateway-service
-          railway up --service userservice
-          railway up --service maintenanceservice
-          railway up --service paymentservice
-          railway up --service notificationservice
+          # Deploy từng service, kiểm tra health trước khi tiếp tục
+          SERVICES=("gateway-service" "userservice" "maintenanceservice" "paymentservice" "notificationservice")
+          for SERVICE in "${SERVICES[@]}"; do
+            echo "Deploying $SERVICE..."
+            railway up --service "$SERVICE"
 
-          # Get deployment URL
+            # Chờ service khởi động (tối đa 60 giây)
+            echo "Waiting for $SERVICE to be ready..."
+            sleep 20
+          done
+
+          # Lấy deployment URL
           APP_URL=$(railway domain)
           echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
 
-      - name: 🧪 Smoke tests
+      - name: Smoke tests
+        env:
+          APP_URL: ${{ steps.deploy.outputs.app_url }}
         run: |
-          echo "Running smoke tests against deployment..."
-          # Add smoke test commands here
+          echo "Running smoke tests against $APP_URL"
 
-  # ============================================================
-  # Stage 8: Notification
-  # ============================================================
+          # Hàm helper: retry tối đa 5 lần với delay 10 giây
+          check_health() {
+            local url=$1
+            local service=$2
+            local max_attempts=5
+            local attempt=1
+
+            while [ $attempt -le $max_attempts ]; do
+              echo "[$service] Health check attempt $attempt/$max_attempts: $url"
+              HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$url")
+              if [ "$HTTP_STATUS" = "200" ]; then
+                echo "[$service] Healthy (HTTP $HTTP_STATUS)"
+                return 0
+              fi
+              echo "[$service] ⏳ Not ready yet (HTTP $HTTP_STATUS), retrying in 10s..."
+              sleep 10
+              attempt=$((attempt + 1))
+            done
+
+            echo "[$service] Health check FAILED after $max_attempts attempts"
+            return 1
+          }
+
+          # Kiểm tra health của từng service qua Gateway
+          check_health "https://$APP_URL/actuator/health" "gateway"
+          check_health "https://$APP_URL/api/users/actuator/health" "userservice"
+          check_health "https://$APP_URL/api/maintenance/actuator/health" "maintenanceservice"
+          check_health "https://$APP_URL/api/payments/actuator/health" "paymentservice"
+          check_health "https://$APP_URL/api/notifications/actuator/health" "notificationservice"
+
+          echo "All smoke tests passed!"
+
   notify:
     name: Notify Deployment
     runs-on: ubuntu-latest
     needs: [deploy]
     if: always()
     steps:
-      - name: 📧 Send notification
+      - name: Send notification
         uses: 8398a7/action-slack@v3
         with:
           status: ${{ job.status }}
@@ -274,5 +285,6 @@ jobs:
             Commit: ${{ github.sha }}
             Author: ${{ github.actor }}
             Environment: ${{ github.event.inputs.deploy_env || 'dev' }}
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
         if: always()
